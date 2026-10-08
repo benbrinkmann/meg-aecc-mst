@@ -17,7 +17,7 @@ Replication of the methods in Govaarts et al. (2025), *Network Neuroscience*
 | subject | subject ID used for output folders |
 | session | session label; labels must sort chronologically (ses01, ses02) |
 | raw_fif | tSSS-processed resting state recording |
-| er_fif | empty room recording, processed with the same SSS/tSSS settings |
+| er_fif | empty room recording, processed with the same SSS/tSSS settings; may be left blank (see below) |
 | mri_fif | MEGIN MRI wrapper .fif (lists the DICOM slices) |
 | fs_subject | FreeSurfer subject name (shared across sessions) |
 | group | group label used by stage 07 (see `REFERENCE_GROUPS`, `TARGET_GROUP`) |
@@ -48,7 +48,10 @@ Each script accepts `--subject` and `--session` to limit what it processes.
   regularization value is not reported in the paper. `reduce_rank=True` is
   required because a sphere model has no radial sensitivity.
 - **Noise covariance**: MNE whitens with the empty room covariance to combine
-  magnetometers and gradiometers; the paper does not describe this step.
+  magnetometers and gradiometers; the paper does not describe this step. If
+  `er_fif` is blank, an ad hoc diagonal covariance is used instead and recorded
+  as `noise_cov_source` in `roi_timeseries.npz`. An empty room recording from a
+  nearby date, processed the same way, is preferable to the ad hoc fallback.
 - **Template registration**: MNI152 (nilearn) to the subject's `brainmask.mgz`
   using MNE/dipy symmetric diffeomorphic registration, rather than the
   normalization used in the paper.

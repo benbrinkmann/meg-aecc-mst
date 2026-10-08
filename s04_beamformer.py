@@ -5,6 +5,7 @@ Stage 04: Scalar LCMV beamformer and ROI time series.
   - Data covariance from the whole broadband recording, as in the paper.
   - Noise covariance from the empty room recording, filtered identically.
     MNE uses it to whiten when combining magnetometers and gradiometers.
+    If er_fif is blank in subjects.csv, an ad hoc diagonal covariance is used.
   - Beamformer weights at the 90 AAL centroids; apply to the analysis segment
     (N_EPOCHS x EPOCH_DUR_S seconds starting at SEGMENT_START_S).
 
@@ -49,23 +50,36 @@ def main():
                            .read_text())["names"]
 
         raw, bads = load_broadband(row["raw_fif"])
-        # Use the subject recording's bad channels so both covariances match.
-        er, _ = load_broadband(row["er_fif"], bads=bads)
-        if not er.info.get("proc_history"):
-            print("WARNING: empty room file shows no MaxFilter history; it should be "
-                  "processed with the same SSS/tSSS settings as the subject data.")
 
-        # Both recordings must contain exactly the same channels.
-        common_chs = [ch for ch in raw.ch_names if ch in er.ch_names]
-        if len(common_chs) != len(raw.ch_names):
-            print(f"Note: {len(raw.ch_names) - len(common_chs)} channel(s) missing from "
-                  f"empty room; dropping them from both.")
-        raw.pick(common_chs)
-        er.pick(common_chs)
+        if row["er_fif"].strip():
+            # Use the subject recording's bad channels so both covariances match.
+            er, _ = load_broadband(row["er_fif"], bads=bads)
+            if not er.info.get("proc_history"):
+                print("WARNING: empty room file shows no MaxFilter history; it should be "
+                      "processed with the same SSS/tSSS settings as the subject data.")
 
-        # Covariances. rank="info" accounts for the rank reduction from SSS.
+            # Both recordings must contain exactly the same channels.
+            common_chs = [ch for ch in raw.ch_names if ch in er.ch_names]
+            if len(common_chs) != len(raw.ch_names):
+                print(f"Note: {len(raw.ch_names) - len(common_chs)} channel(s) missing "
+                      f"from empty room; dropping them from both.")
+            raw.pick(common_chs)
+            er.pick(common_chs)
+            # rank="info" accounts for the rank reduction from SSS.
+            noise_cov = mne.compute_raw_covariance(er, rank="info", verbose=False)
+            noise_source = "empty_room"
+        else:
+            # No empty room recording listed in subjects.csv: fall back to a
+            # diagonal noise covariance with MNE's default sensor noise levels.
+            # This only sets the relative weighting of magnetometers and
+            # gradiometers, but results may differ slightly from sessions
+            # whitened with an empty room recording.
+            print("WARNING: no empty room recording; using an ad hoc diagonal "
+                  "noise covariance.")
+            noise_cov = mne.make_ad_hoc_cov(raw.info, verbose=False)
+            noise_source = "ad_hoc"
+
         data_cov = mne.compute_raw_covariance(raw, rank="info", verbose=False)
-        noise_cov = mne.compute_raw_covariance(er, rank="info", verbose=False)
         print(f"Data covariance from {raw.times[-1]:.0f} s of data")
 
         filters = make_lcmv(raw.info, fwd, data_cov, reg=config.LCMV_REG,
@@ -88,7 +102,7 @@ def main():
             raise RuntimeError(f"Got {stc.data.shape[0]} source time series, "
                                f"expected {len(names)}.")
         np.savez(out / "roi_timeseries.npz", data=stc.data, sfreq=sfreq, names=names,
-                 segment_start_s=config.SEGMENT_START_S)
+                 segment_start_s=config.SEGMENT_START_S, noise_cov_source=noise_source)
         print(f"Saved {stc.data.shape[0]} ROI time series, {n_samp / sfreq:.1f} s at "
               f"{sfreq:.0f} Hz")
 
