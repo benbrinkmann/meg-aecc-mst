@@ -62,3 +62,7 @@ Each script accepts `--subject` and `--session` to limit what it processes.
   corrected across six bands and two groups.
 - The MRI wrapper's own transform is saved for reference but not used, because
   its MRI coordinate frame is MEGIN's, not FreeSurfer's.
+
+## License
+
+BSD 3-Clause; see `LICENSE`.
