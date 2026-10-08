@@ -5,13 +5,22 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Python interpreter: use $PYTHON if set (e.g. PYTHON=/usr/bin/python3.11 ./run_all.sh),
+# otherwise python3.11 if installed, otherwise python3.
+PYTHON="${PYTHON:-$(command -v python3.11 || command -v python3)}"
+if [ -z "${PYTHON}" ]; then
+    echo "No Python interpreter found; set PYTHON." >&2
+    exit 1
+fi
+echo "Using ${PYTHON}"
+
 for stage in s01_mri_prep s02_coreg s03_atlas_forward s04_beamformer s05_connectivity s06_mst; do
     echo "##### ${stage} #####"
-    python3 "${stage}.py" "$@"
+    "${PYTHON}" "${stage}.py" "$@"
 done
 
 # The group stage always uses every row in subjects.csv.
 if [ "$#" -eq 0 ]; then
     echo "##### s07_group_reference #####"
-    python3 s07_group_reference.py
+    "${PYTHON}" s07_group_reference.py
 fi
