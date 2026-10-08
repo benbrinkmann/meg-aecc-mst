@@ -1,0 +1,9 @@
+mne>=1.6
+mne-connectivity>=0.7
+nilearn>=0.10
+nibabel
+dipy
+networkx
+numpy
+scipy>=1.11
+pandas

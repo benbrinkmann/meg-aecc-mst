@@ -1,0 +1,2 @@
+subject,session,raw_fif,er_fif,mri_fif,fs_subject,group
+P001,ses01,/neuro/data/meg/P001/P001_rest_tsss.fif,/neuro/data/meg/P001/emptyroom_tsss.fif,/neuro/data/mri/P001/P001_mri.fif,P001,target

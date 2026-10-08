@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+# Pipeline outputs and data stay out of the repository
+derivatives/
+freesurfer/
+*.fif
+*.nii
+*.nii.gz
+*.mgz
+# Real subject tables may contain identifiers; keep them out of the repository
+subjects.csv
