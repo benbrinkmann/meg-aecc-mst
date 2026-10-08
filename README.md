@@ -8,9 +8,12 @@ Replication of the methods in Govaarts et al. (2025), *Network Neuroscience*
 1. `pip install -r requirements.txt`
 2. FreeSurfer installed, with `FREESURFER_HOME` set and `recon-all` on the PATH.
 3. Edit the PATHS section of `config.py`.
-4. Copy `subjects_template.csv` to the `SUBJECTS_CSV` path in `config.py` and fill it in,
-   one row per subject and session. `subjects.csv` is ignored by git so subject
-   identifiers stay out of the repository.
+4. Build `subjects.csv` with the form: `python3.11 add_subject.py`. Type the
+   subject ID, pick the files with the Browse buttons, and click Add; each row
+   is saved immediately. (Requires tkinter: `sudo dnf install python3.11-tkinter`
+   if it is missing.) `subjects_template.csv` shows the format if you prefer to
+   edit by hand. `subjects.csv` is ignored by git so subject identifiers stay
+   out of the repository.
 
 | column | meaning |
 |---|---|
