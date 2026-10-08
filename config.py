@@ -13,10 +13,10 @@ from pathlib import Path
 # ----------------------------------------------------------------------------
 # PATHS
 # ----------------------------------------------------------------------------
-# Root for this analysis: the folder holding the repository on the analysis
-# machine. subjects.csv, derivatives/ and freesurfer/ all live here and are
-# excluded from git by .gitignore.
-PROJECT_DIR = Path("/neuro/data/archive/source/python/meg-aecc-mst")
+# Root for this analysis: the folder this config.py file is in, wherever the
+# repository was cloned. subjects.csv, derivatives/ and freesurfer/ all live
+# here and are excluded from git by .gitignore.
+PROJECT_DIR = Path(__file__).resolve().parent
 SUBJECTS_CSV = PROJECT_DIR / "subjects.csv"        # one row per subject/session
 DERIV_DIR = PROJECT_DIR / "derivatives"            # all pipeline outputs
 SUBJECTS_DIR = PROJECT_DIR / "freesurfer"          # FreeSurfer SUBJECTS_DIR
