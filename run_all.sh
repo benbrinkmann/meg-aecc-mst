@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 
 # Python interpreter: use $PYTHON if set (e.g. PYTHON=/usr/bin/python3.11 ./run_all.sh),
 # otherwise python3.11 if installed, otherwise python3.
-PYTHON="${PYTHON:-$(command -v python3.11 || command -v python3)}"
+PYTHON="${PYTHON:-$(command -v python3.11 || command -v python3 || true)}"
 if [ -z "${PYTHON}" ]; then
     echo "No Python interpreter found; set PYTHON." >&2
     exit 1
