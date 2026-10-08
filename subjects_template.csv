@@ -1,2 +1,2 @@
 subject,session,raw_fif,er_fif,mri_fif,fs_subject,group
-P001,ses01,/neuro/data/meg/P001/P001_rest_tsss.fif,/neuro/data/meg/P001/emptyroom_tsss.fif,/neuro/data/mri/P001/P001_mri.fif,P001,target
+P001,ses01,/neuro/data/archive/source/python/meg-aecc-mst/data/P001/P001_rest_tsss.fif,/neuro/data/archive/source/python/meg-aecc-mst/data/P001/emptyroom_tsss.fif,/neuro/data/archive/source/python/meg-aecc-mst/data/P001/P001_mri.fif,P001,target

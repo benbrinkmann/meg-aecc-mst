@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 # Pipeline outputs and data stay out of the repository
 derivatives/
+data/
 freesurfer/
 *.fif
 *.nii
