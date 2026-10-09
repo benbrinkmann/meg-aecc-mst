@@ -37,21 +37,32 @@ HUB_REGIONS = {
 }
 
 
-# Names shown in figure titles for each group label in subjects.csv. Labels
-# not listed here are shown as they are. The target group entry follows
-# TARGET_GROUP in config.py, whatever its label.
+# Names shown in figure titles. A group is named, in order of preference:
+#  1. by its label in GROUP_DISPLAY_NAMES (the target group follows TARGET_GROUP
+#     in config.py, whatever its label);
+#  2. by its subject IDs, when every subject in the group matches one pattern in
+#     ID_PATTERN_DISPLAY_NAMES (e.g. TLE001, TLE002 -> Temporal lobe epilepsy);
+#  3. otherwise by the label itself.
+import re as _re
 import config as _config
 GROUP_DISPLAY_NAMES = {
     _config.TARGET_GROUP: "GAD65 autoimmune epilepsy",
-    "N": "Normal controls",
-    "TLE": "Temporal lobe epilepsy",
+}
+ID_PATTERN_DISPLAY_NAMES = {
+    r"^TLE\d": "Temporal lobe epilepsy",
+    r"^N\d": "Normal controls",
 }
 
 
-def display_name(group):
-    """Figure label for a group label from subjects.csv."""
-    return GROUP_DISPLAY_NAMES.get(group, group)
-
+def display_name(group, subject_ids=()):
+    """Figure label for a group label from subjects.csv (see the rules above)."""
+    if group in GROUP_DISPLAY_NAMES:
+        return GROUP_DISPLAY_NAMES[group]
+    ids = [str(s) for s in subject_ids]
+    for pattern, name in ID_PATTERN_DISPLAY_NAMES.items():
+        if ids and all(_re.match(pattern, s) for s in ids):
+            return name
+    return group
 
 def split_hemisphere(roi_name):
     """'Hippocampus_L' -> ('Hippocampus', 'L'). Raises ValueError if no _L/_R suffix."""

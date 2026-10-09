@@ -175,7 +175,7 @@ def zscores(df, target, refs):
     return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
 
-def plot_contrasts(con, zs, measure, hub_names, bands, target, refs, fname):
+def plot_contrasts(con, zs, measure, hub_names, bands, target, refs, fname, names):
     """
     Heatmap, hubs x bands, one panel per reference group: Cliff's delta of
     target vs reference when it could be tested, otherwise the mean z-score
@@ -215,12 +215,12 @@ def plot_contrasts(con, zs, measure, hub_names, bands, target, refs, fname):
             ax.text(j, i, "*", ha="center", va="center", fontsize=11, color="#222222")
         ax.set_xticks(range(len(bands)), bands, rotation=45, ha="right")
         ax.set_yticks(range(len(hub_names)), hub_names)
-        ax.set_title(f"{display_name(target)}\nvs {display_name(ref)}\n({label})", fontsize=9)
+        ax.set_title(f"{names[target]}\nvs {names[ref]}\n({label})", fontsize=9)
         ax.tick_params(length=0)
         for spine in ax.spines.values():
             spine.set_visible(False)
     cbar = fig.colorbar(image, ax=axes[0].tolist(), shrink=0.6, pad=0.02)
-    cbar.set_label(f"{measure}: higher in {display_name(target)}  →", fontsize=8)
+    cbar.set_label(f"{measure}: higher in {names[target]}  →", fontsize=8)
     cbar.outline.set_visible(False)
     fig.savefig(fname, dpi=200, bbox_inches="tight")
     plt.close(fig)
@@ -290,9 +290,13 @@ def main():
         else:
             print(f"No group tests (need at least {MIN_GROUP_N} subjects per group); "
                   f"z-scores only.")
+        # Display names, using each group's subject IDs (see hubs.py).
+        names = {g: display_name(g, df.loc[df["group"] == g, "subject"].unique())
+                 for g in [target] + refs}
+        print("Figure labels: " + ", ".join(f"{g} = {n}" for g, n in names.items()))
         for measure in FIGURE_MEASURES:
             plot_contrasts(con, zs, measure, hub_names, bands, target, refs,
-                           gdir / f"contrast_{measure}.png")
+                           gdir / f"contrast_{measure}.png", names)
         print(f"Results in {gdir}")
 
 
