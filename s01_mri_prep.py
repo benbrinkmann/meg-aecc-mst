@@ -141,8 +141,10 @@ def main():
                     raise RuntimeError(f"recon-all failed before creating T1.mgz and "
                                        f"brainmask.mgz; see {log}")
 
-        # 3. Scalp surfaces (uses FreeSurfer's mkheadsurf).
-        head_surf = config.SUBJECTS_DIR / fs_subj / "bem" / f"{fs_subj}-head-dense.fif"
+        # 3. Scalp surfaces (uses FreeSurfer's mkheadsurf, then VTK to make the
+        #    medium and sparse versions). The sparse file is written last, so
+        #    check for it: a run that stopped part way is redone.
+        head_surf = config.SUBJECTS_DIR / fs_subj / "bem" / f"{fs_subj}-head-sparse.fif"
         if head_surf.exists():
             print("Scalp surface found; skipping.")
         else:

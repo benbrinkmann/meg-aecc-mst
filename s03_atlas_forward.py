@@ -92,7 +92,10 @@ def main():
 
         # --- Sphere fitted to the scalp surface, in head coordinates.
         trans = mne.read_trans(require(out / "coreg-trans.fif", "s02_coreg.py"))
-        head = mne.get_head_surf(fs_subj, subjects_dir=config.SUBJECTS_DIR)
+        # Use the dense scalp surface from stage 01 (MNE's default search does
+        # not find the -head-dense/-medium/-sparse file names).
+        head = mne.get_head_surf(fs_subj, source=("head-dense", "head"),
+                                 subjects_dir=config.SUBJECTS_DIR)
         scalp_head = mne.transforms.apply_trans(mne.transforms.invert_transform(trans),
                                                 head["rr"])
         scalp_head = scalp_head[scalp_head[:, 2] > config.SPHERE_MIN_Z_M]
