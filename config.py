@@ -44,6 +44,12 @@ DICOM_PATH_REMAP = [
 # It allows the deep learning steps (SynthStrip, SynthSeg) to run.
 FS_ALLOW_DEEP = True
 
+# If the subject's MRI cannot be used (or mri_fif is blank), use the fsaverage
+# template scaled to the digitized head shape instead, and keep going.
+MRI_FALLBACK = True
+TEMPLATE_SOURCE = FREESURFER_HOME / "subjects" / "fsaverage"   # read only
+TEMPLATE_NAME = "fsaverage_template"   # built once inside SUBJECTS_DIR
+
 # Only T1.mgz and brainmask.mgz are needed, which "-autorecon1" produces in
 # well under an hour. Use "-all" if you also want cortical surfaces.
 RECON_ALL_FLAGS = ["-autorecon1"]

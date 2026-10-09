@@ -24,7 +24,7 @@ Replication of the methods in Govaarts et al. (2025), *Network Neuroscience*
 | session | session label; labels must sort chronologically (ses01, ses02) |
 | raw_fif | tSSS-processed resting state recording |
 | er_fif | empty room recording, processed with the same SSS/tSSS settings; may be left blank (see below) |
-| mri_fif | MEGIN MRI wrapper .fif (lists the DICOM slices) |
+| mri_fif | MEGIN MRI wrapper .fif (lists the DICOM slices); may be left blank to use the template |
 | fs_subject | FreeSurfer subject name (shared across sessions) |
 | group | group label used by stage 07 (see `REFERENCE_GROUPS`, `TARGET_GROUP`) |
 
@@ -69,6 +69,13 @@ Each script accepts `--subject` and `--session` to limit what it processes.
   it does not affect the MSTs.
 - **FDR** is applied across the six bands within each comparison; the paper
   corrected across six bands and two groups.
+- **MRI fallback**: if a subject's MRI cannot be used (wrapper unreadable, slices
+  missing, recon-all or scalp surface failure) or `mri_fif` is blank, stage 01
+  uses FreeSurfer's fsaverage scaled uniformly to the digitized head shape
+  (`MRI_FALLBACK` in `config.py`). The choice and reason are saved in
+  `derivatives/<subject>/anat/anatomy_source.json` and in the `anatomy` column of
+  `mst_metrics.csv`. To retry the subject's own MRI later, delete
+  `freesurfer/<fs_subject>` and `derivatives/<subject>/anat`.
 - The MRI wrapper's own transform is saved for reference but not used, because
   its MRI coordinate frame is MEGIN's, not FreeSurfer's.
 

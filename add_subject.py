@@ -94,6 +94,7 @@ class SubjectForm(tk.Tk):
         self.er = tk.StringVar()
         self.mri = tk.StringVar()
         self.no_er = tk.BooleanVar(value=False)
+        self.no_mri = tk.BooleanVar(value=False)
         self.status = tk.StringVar(value=f"Saving to {self.csv_path}")
 
         # Session and FreeSurfer name follow the subject ID until edited by hand.
@@ -140,15 +141,19 @@ class SubjectForm(tk.Tk):
         ttk.Checkbutton(form, text="No empty room recording (use ad hoc noise covariance)",
                         variable=self.no_er, command=self._toggle_er).grid(
             row=6, column=1, sticky="w", **pad)
-        self._file_row(form, 7, "MRI wrapper (.fif)", self.mri, "Select MRI wrapper file")
+        self.mri_entry, self.mri_button = self._file_row(
+            form, 7, "MRI wrapper (.fif)", self.mri, "Select MRI wrapper file")
+        ttk.Checkbutton(form, text="No usable MRI (use fsaverage scaled to the head shape)",
+                        variable=self.no_mri, command=self._toggle_mri).grid(
+            row=8, column=1, sticky="w", **pad)
 
         buttons = ttk.Frame(form)
-        buttons.grid(row=8, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        buttons.grid(row=9, column=0, columnspan=3, sticky="w", pady=(8, 0))
         ttk.Button(buttons, text="Add", command=self._add).pack(side="left", padx=4)
         ttk.Button(buttons, text="Clear form", command=self._clear).pack(side="left", padx=4)
         ttk.Button(buttons, text="Close", command=self.destroy).pack(side="left", padx=4)
         ttk.Label(form, textvariable=self.status, foreground="#1E4620").grid(
-            row=9, column=0, columnspan=3, sticky="w", **pad)
+            row=10, column=0, columnspan=3, sticky="w", **pad)
 
         # Table of rows already in subjects.csv.
         table = ttk.Frame(self, padding=(10, 0, 10, 10))
@@ -200,6 +205,13 @@ class SubjectForm(tk.Tk):
         self.er_entry.configure(state=state)
         self.er_button.configure(state=state)
 
+    def _toggle_mri(self):
+        state = "disabled" if self.no_mri.get() else "normal"
+        if self.no_mri.get():
+            self.mri.set("")
+        self.mri_entry.configure(state=state)
+        self.mri_button.configure(state=state)
+
     def _validate(self):
         """Return a list of problems with the form (empty list if it is OK)."""
         problems = []
@@ -210,7 +222,8 @@ class SubjectForm(tk.Tk):
         files = [("Resting MEG", self.raw.get())]
         if not self.no_er.get():
             files.append(("Empty room", self.er.get()))
-        files.append(("MRI wrapper", self.mri.get()))
+        if not self.no_mri.get():
+            files.append(("MRI wrapper", self.mri.get()))
         for label, value in files:
             if not value.strip():
                 problems.append(f"{label}: no file selected.")
@@ -229,7 +242,8 @@ class SubjectForm(tk.Tk):
         new = dict(subject=self.subject.get().strip(), session=self.session.get().strip(),
                    raw_fif=self.raw.get().strip(),
                    er_fif="" if self.no_er.get() else self.er.get().strip(),
-                   mri_fif=self.mri.get().strip(), fs_subject=self.fs_subject.get().strip(),
+                   mri_fif="" if self.no_mri.get() else self.mri.get().strip(),
+                   fs_subject=self.fs_subject.get().strip(),
                    group=self.group.get().strip())
 
         # Same subject and session already listed: confirm before replacing.
@@ -285,6 +299,8 @@ class SubjectForm(tk.Tk):
             self.group.set(config.TARGET_GROUP)
         self.no_er.set(False)
         self._toggle_er()
+        self.no_mri.set(False)
+        self._toggle_mri()
         self.subject_entry.focus_set()
 
     def _refresh_table(self):
@@ -293,7 +309,7 @@ class SubjectForm(tk.Tk):
             self.tree.insert("", "end", values=(
                 r["subject"], r["session"], r["group"], Path(r["raw_fif"]).name,
                 Path(r["er_fif"]).name if r["er_fif"] else "(none: ad hoc)",
-                Path(r["mri_fif"]).name))
+                Path(r["mri_fif"]).name if r["mri_fif"] else "(none: template)"))
 
 
 if __name__ == "__main__":

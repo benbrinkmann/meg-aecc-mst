@@ -10,9 +10,12 @@ Outputs per session:
   mst_metrics.csv      global metrics, mean over epochs, one row per band
   mst_bc.csv           betweenness centrality per ROI and band, mean over epochs
 """
+import json
+
 import numpy as np
 import pandas as pd
 
+import config
 from common import load_subjects, mst_edges, mst_metrics, parse_args, require, session_dir
 
 GLOBAL_METRICS = ["leaf_fraction", "diameter", "diameter_norm", "bc_max", "tree_hierarchy"]
@@ -29,6 +32,9 @@ def main():
         f = np.load(require(out / "aecc.npz", "s05_connectivity.py"))
         aecc, bands, names = f["aecc_epochs"], list(f["bands"]), list(f["names"])
         n_bands, n_epochs, n_nodes, _ = aecc.shape
+        # Which anatomy stage 01 used (subject_mri or scaled_template).
+        record = config.DERIV_DIR / subj / "anat" / "anatomy_source.json"
+        anatomy = json.loads(record.read_text()).get("anatomy", "unknown") if record.exists() else "unknown"
 
         edges = np.zeros((n_bands, n_epochs, n_nodes - 1, 2), dtype=int)
         bc = np.zeros((n_bands, n_epochs, n_nodes))
@@ -41,7 +47,8 @@ def main():
                 bc[b, e] = m.pop("bc")
                 per_epoch.append(m)
             means = pd.DataFrame(per_epoch)[GLOBAL_METRICS].mean()
-            metric_rows.append({"subject": subj, "session": ses, "band": bands[b], **means})
+            metric_rows.append({"subject": subj, "session": ses, "band": bands[b],
+                                "anatomy": anatomy, **means})
 
         metrics = pd.DataFrame(metric_rows)
         metrics.to_csv(out / "mst_metrics.csv", index=False)
