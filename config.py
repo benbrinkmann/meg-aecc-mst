@@ -27,11 +27,14 @@ FREESURFER_HOME = Path("/neuro/data/archive/packages/freesurfer/8.0.0-beta")
 SUBJECTS_DIR = PROJECT_DIR / "freesurfer"
 
 # The MRI .fif wrapper stores the DICOM slice paths as they were when it was
-# written (possibly on another machine). If those paths moved, set this to
-# (old_prefix, new_prefix) and the prefix will be swapped before use.
-# Example: ("/data/mrilab/", "/neuro/data/archive/mri/")
-# The archive moved the clinical MRI slices from sinuhe to archive/data.
-DICOM_PATH_REMAP = ("/neuro/data/sinuhe/clinical/", "/neuro/data/archive/data/clinical/")
+# written. If those paths moved, list (old_prefix, new_prefix) pairs here;
+# the first pair whose old prefix matches a path is swapped before use.
+# The archive moved the clinical MRI slices from sinuhe to archive/data, and
+# older wrappers reach sinuhe through more than one link.
+DICOM_PATH_REMAP = [
+    ("/neuro/data/sinuhe/clinical/", "/neuro/data/archive/data/clinical/"),
+    ("/neuro/mri/sinuhe/clinical/", "/neuro/data/archive/data/clinical/"),
+]
 
 # ----------------------------------------------------------------------------
 # MRI / ANATOMY (stage 01 and 03)

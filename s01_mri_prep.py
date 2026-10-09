@@ -73,11 +73,14 @@ def read_mri_wrapper(fname):
 
 
 def remap(path):
-    """Apply DICOM_PATH_REMAP from config, if set."""
-    if config.DICOM_PATH_REMAP is None:
-        return path
-    old, new = config.DICOM_PATH_REMAP
-    return new + path[len(old):] if path.startswith(old) else path
+    """Swap the first matching old prefix in DICOM_PATH_REMAP for its new prefix."""
+    pairs = config.DICOM_PATH_REMAP or []
+    if isinstance(pairs, tuple) and len(pairs) == 2 and isinstance(pairs[0], str):
+        pairs = [pairs]   # also accept a single (old, new) pair
+    for old, new in pairs:
+        if path.startswith(old):
+            return new + path[len(old):]
+    return path
 
 
 def main():
