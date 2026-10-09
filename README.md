@@ -8,7 +8,8 @@ Replication of the methods in Govaarts et al. (2025), *Network Neuroscience*
 1. `pip install -r requirements.txt`
 2. FreeSurfer installed, with a license file. Set `FREESURFER_HOME` in `config.py`;
    stage 01 sources its `SetUpFreeSurfer.sh` itself. Reconstructions go to
-   `SUBJECTS_DIR` (default `$FREESURFER_HOME/subjects`), which must be writable.
+   `SUBJECTS_DIR`, by default `freesurfer/` in the project folder (ignored by
+   git); set the same `SUBJECTS_DIR` in your shell before using `freeview`.
 3. Edit the PATHS section of `config.py`.
 4. Build `subjects.csv` with the form: `python3.11 add_subject.py`. Type the
    subject ID, pick the files with the Browse buttons, and click Add; each row

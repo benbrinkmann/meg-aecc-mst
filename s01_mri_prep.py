@@ -83,8 +83,7 @@ def remap(path):
 def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
-    if not config.SUBJECTS_DIR.is_dir():
-        raise FileNotFoundError(f"FreeSurfer subjects folder not found: {config.SUBJECTS_DIR}")
+    config.SUBJECTS_DIR.mkdir(parents=True, exist_ok=True)
     if not os.access(config.SUBJECTS_DIR, os.W_OK):
         raise PermissionError(f"No write permission for {config.SUBJECTS_DIR}; "
                               f"recon-all needs to create subject folders there.")

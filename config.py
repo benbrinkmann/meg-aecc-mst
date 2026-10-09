@@ -19,11 +19,12 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent
 SUBJECTS_CSV = PROJECT_DIR / "subjects.csv"        # one row per subject/session
 DERIV_DIR = PROJECT_DIR / "derivatives"            # all pipeline outputs
-# FreeSurfer installation, and the subjects folder inside it. Stage 01 sets up
-# the FreeSurfer environment from this installation itself, so it does not
-# depend on .bashrc.
+# FreeSurfer installation. Stage 01 sets up the FreeSurfer environment from
+# this installation itself, so it does not depend on .bashrc.
 FREESURFER_HOME = Path("/neuro/data/archive/packages/freesurfer/8.0.0-beta")
-SUBJECTS_DIR = FREESURFER_HOME / "subjects"          # FreeSurfer SUBJECTS_DIR
+# FreeSurfer SUBJECTS_DIR for this project, kept with the project rather than
+# in the FreeSurfer installation. Use the same folder when running freeview.
+SUBJECTS_DIR = PROJECT_DIR / "freesurfer"
 
 # The MRI .fif wrapper stores the DICOM slice paths as they were when it was
 # written (possibly on another machine). If those paths moved, set this to
