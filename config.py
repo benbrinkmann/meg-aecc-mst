@@ -39,6 +39,11 @@ DICOM_PATH_REMAP = [
 # ----------------------------------------------------------------------------
 # MRI / ANATOMY (stage 01 and 03)
 # ----------------------------------------------------------------------------
+# FreeSurfer 8 recon-all stops with "ERROR: cannot use ML routines" unless
+# FS_ALLOW_DEEP=1 is set (fix suggested on the FreeSurfer mailing list).
+# It allows the deep learning steps (SynthStrip, SynthSeg) to run.
+FS_ALLOW_DEEP = True
+
 # Only T1.mgz and brainmask.mgz are needed, which "-autorecon1" produces in
 # well under an hour. Use "-all" if you also want cortical surfaces.
 RECON_ALL_FLAGS = ["-autorecon1"]

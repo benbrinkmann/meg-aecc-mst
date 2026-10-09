@@ -48,6 +48,8 @@ def freesurfer_env():
                if "=" in item)
     env["FREESURFER_HOME"] = str(fs_home)
     env["SUBJECTS_DIR"] = str(config.SUBJECTS_DIR)   # in case the setup script reset it
+    if config.FS_ALLOW_DEEP:
+        env["FS_ALLOW_DEEP"] = "1"   # needed by FreeSurfer 8 recon-all; see config.py
     return env
 
 
