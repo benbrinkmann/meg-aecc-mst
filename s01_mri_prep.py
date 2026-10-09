@@ -7,7 +7,9 @@ For each subject:
   2. Run FreeSurfer recon-all on the DICOM series (T1.mgz, brainmask.mgz).
   3. Build the scalp surface used for coregistration and the sphere fit.
 
-Requires FreeSurfer on the PATH with FREESURFER_HOME set.
+The FreeSurfer environment is set up from FREESURFER_HOME in config.py (by
+sourcing its SetUpFreeSurfer.sh), with SUBJECTS_DIR from config.py. A FreeSurfer
+license file must be in FREESURFER_HOME, or FS_LICENSE must be set.
 
 Note: reading the wrapper uses MNE's private FIF reader (mne._fiff), which may
 change between MNE versions. The scalp surface and coregistration in later
@@ -24,6 +26,29 @@ from mne._fiff.tag import read_tag
 
 import config
 from common import anat_dir, load_subjects, parse_args
+
+
+def freesurfer_env():
+    """
+    Return the environment FreeSurfer commands need, as a dict, by sourcing
+    SetUpFreeSurfer.sh from config.FREESURFER_HOME in a bash shell and reading
+    back the resulting variables. SUBJECTS_DIR is always set from config.py.
+    """
+    fs_home = config.FREESURFER_HOME
+    setup = fs_home / "SetUpFreeSurfer.sh"
+    if not setup.is_file():
+        raise FileNotFoundError(f"{setup} not found; check FREESURFER_HOME in config.py.")
+    script = (f'export FREESURFER_HOME="{fs_home}"; '
+              f'export SUBJECTS_DIR="{config.SUBJECTS_DIR}"; '
+              f'export FS_FREESURFERENV_NO_OUTPUT=1; '
+              f'source "{setup}" >/dev/null 2>&1; env -0')
+    out = subprocess.run(["bash", "-c", script], check=True, capture_output=True).stdout
+    # "env -0" separates variables with NUL characters, so values may contain newlines.
+    env = dict(item.split("=", 1) for item in out.decode(errors="replace").split("\0")
+               if "=" in item)
+    env["FREESURFER_HOME"] = str(fs_home)
+    env["SUBJECTS_DIR"] = str(config.SUBJECTS_DIR)   # in case the setup script reset it
+    return env
 
 
 def read_mri_wrapper(fname):
@@ -58,8 +83,16 @@ def remap(path):
 def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
-    config.SUBJECTS_DIR.mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, SUBJECTS_DIR=str(config.SUBJECTS_DIR))
+    if not config.SUBJECTS_DIR.is_dir():
+        raise FileNotFoundError(f"FreeSurfer subjects folder not found: {config.SUBJECTS_DIR}")
+    if not os.access(config.SUBJECTS_DIR, os.W_OK):
+        raise PermissionError(f"No write permission for {config.SUBJECTS_DIR}; "
+                              f"recon-all needs to create subject folders there.")
+
+    # Put the FreeSurfer environment into this process too, so the FreeSurfer
+    # programs MNE calls (mkheadsurf, for the scalp surface) find it as well.
+    env = freesurfer_env()
+    os.environ.update(env)
 
     # Each FreeSurfer subject only needs processing once, even with several sessions.
     for _, row in rows.drop_duplicates("fs_subject").iterrows():
