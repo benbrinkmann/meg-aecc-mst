@@ -20,6 +20,7 @@ import subprocess
 from pathlib import Path
 
 import mne
+from mne.bem import make_scalp_surfaces
 from mne._fiff.constants import FIFF
 from mne._fiff.open import fiff_open
 from mne._fiff.tag import read_tag
@@ -148,7 +149,7 @@ def main():
         if head_surf.exists():
             print("Scalp surface found; skipping.")
         else:
-            mne.bem.make_scalp_surfaces(fs_subj, subjects_dir=config.SUBJECTS_DIR,
+            make_scalp_surfaces(fs_subj, subjects_dir=config.SUBJECTS_DIR,
                                         force=True, overwrite=True)
 
 

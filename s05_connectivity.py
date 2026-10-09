@@ -11,7 +11,7 @@ Output: aecc.npz with
   aecc_epochs  (n_bands, n_epochs, 90, 90), diagonal set to 0
   aecc_mean    (n_bands, 90, 90), mean over epochs
 """
-import mne
+from mne.filter import filter_data
 import numpy as np
 from mne_connectivity import envelope_correlation
 
@@ -80,7 +80,7 @@ def main():
             if config.BAND_FILTER == "fft":
                 band_epochs = fft_bandpass(to_epochs(data), sfreq_ds, lo, hi)
             elif config.BAND_FILTER == "fir":
-                filt = mne.filter.filter_data(data, sfreq_ds, lo, hi, verbose=False)
+                filt = filter_data(data, sfreq_ds, lo, hi, verbose=False)
                 band_epochs = to_epochs(filt)
             else:
                 raise ValueError(f"Unknown BAND_FILTER: {config.BAND_FILTER}")

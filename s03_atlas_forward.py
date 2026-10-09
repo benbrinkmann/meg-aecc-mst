@@ -13,6 +13,10 @@ Per session:
 import json
 
 import mne
+# Import submodule functions directly: some MNE versions do not expose
+# mne.transforms as an attribute of the lazily loaded mne package.
+from mne.transforms import (apply_trans, apply_volume_registration,
+                            compute_volume_registration, invert_transform)
 import nibabel as nib
 import numpy as np
 from nilearn import datasets
@@ -41,9 +45,9 @@ def compute_centroids(fs_subj, out):
     atlas_img, rois = aal_rois()
 
     print("Registering MNI152 template to subject (several minutes)...")
-    reg_affine, sdr = mne.transforms.compute_volume_registration(
+    reg_affine, sdr = compute_volume_registration(
         template, brain, pipeline="all", zooms=config.REG_ZOOMS)
-    warped = mne.transforms.apply_volume_registration(
+    warped = apply_volume_registration(
         atlas_img, brain, reg_affine, sdr, interpolation="nearest")
     nib.save(warped, out / "aal_in_subject.nii.gz")   # for visual QC
 
@@ -96,8 +100,7 @@ def main():
         # not find the -head-dense/-medium/-sparse file names).
         head = mne.get_head_surf(fs_subj, source=("head-dense", "head"),
                                  subjects_dir=config.SUBJECTS_DIR, on_defects="warn")
-        scalp_head = mne.transforms.apply_trans(mne.transforms.invert_transform(trans),
-                                                head["rr"])
+        scalp_head = apply_trans(invert_transform(trans), head["rr"])
         scalp_head = scalp_head[scalp_head[:, 2] > config.SPHERE_MIN_Z_M]
         if len(scalp_head) < 100:
             raise RuntimeError("Too few scalp points above SPHERE_MIN_Z_M for a sphere fit.")
