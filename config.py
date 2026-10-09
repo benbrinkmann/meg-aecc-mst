@@ -30,7 +30,8 @@ SUBJECTS_DIR = PROJECT_DIR / "freesurfer"
 # written (possibly on another machine). If those paths moved, set this to
 # (old_prefix, new_prefix) and the prefix will be swapped before use.
 # Example: ("/data/mrilab/", "/neuro/data/archive/mri/")
-DICOM_PATH_REMAP = None
+# The archive moved the clinical MRI slices from sinuhe to archive/data.
+DICOM_PATH_REMAP = ("/neuro/data/sinuhe/clinical/", "/neuro/data/archive/data/clinical/")
 
 # ----------------------------------------------------------------------------
 # MRI / ANATOMY (stage 01 and 03)
