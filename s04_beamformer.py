@@ -19,7 +19,7 @@ import numpy as np
 from mne.beamformer import apply_lcmv_raw, make_lcmv
 
 import config
-from common import load_subjects, parse_args, require, session_dir
+from common import load_subjects, parse_args, require, session_dir, run_each
 
 
 def load_broadband(fname, bads=None):
@@ -41,7 +41,7 @@ def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
 
-    for _, row in rows.iterrows():
+    def process(row):
         subj, ses = row["subject"], row["session"]
         print(f"\n=== {subj} / {ses} ===")
         out = session_dir(subj, ses)
@@ -106,6 +106,8 @@ def main():
         print(f"Saved {stc.data.shape[0]} ROI time series, {n_samp / sfreq:.1f} s at "
               f"{sfreq:.0f} Hz")
 
+
+    run_each(rows, "s04", process)
 
 if __name__ == "__main__":
     main()

@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 import config
-from common import load_subjects, mst_edges, mst_metrics, parse_args, require, session_dir
+from common import load_subjects, mst_edges, mst_metrics, parse_args, require, session_dir, run_each
 
 GLOBAL_METRICS = ["leaf_fraction", "diameter", "diameter_norm", "bc_max", "tree_hierarchy"]
 
@@ -25,7 +25,7 @@ def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
 
-    for _, row in rows.iterrows():
+    def process(row):
         subj, ses = row["subject"], row["session"]
         print(f"\n=== {subj} / {ses} ===")
         out = session_dir(subj, ses)
@@ -56,6 +56,8 @@ def main():
         np.savez(out / "mst.npz", edges=edges, bc=bc, bands=bands, names=names)
         print(metrics[["band"] + GLOBAL_METRICS].round(3).to_string(index=False))
 
+
+    run_each(rows, "s06", process)
 
 if __name__ == "__main__":
     main()

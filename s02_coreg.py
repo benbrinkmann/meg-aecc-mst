@@ -16,14 +16,14 @@ import numpy as np
 from mne.coreg import Coregistration
 
 import config
-from common import load_subjects, parse_args, session_dir
+from common import load_subjects, parse_args, session_dir, run_each
 
 
 def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
 
-    for _, row in rows.iterrows():
+    def process(row):
         subj, ses, fs_subj = row["subject"], row["session"], row["fs_subject"]
         print(f"\n=== {subj} / {ses} ===")
         info = mne.io.read_info(row["raw_fif"])
@@ -55,6 +55,8 @@ def main():
         mne.write_trans(out / "coreg-trans.fif", coreg.trans, overwrite=True)
         np.savetxt(out / "coreg_distances_mm.txt", dists_mm, fmt="%.2f")
 
+
+    run_each(rows, "s02", process)
 
 if __name__ == "__main__":
     main()

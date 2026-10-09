@@ -38,7 +38,7 @@ from mne._fiff.open import fiff_open
 from mne._fiff.tag import read_tag
 
 import config
-from common import anat_dir, load_subjects, parse_args
+from common import anat_dir, load_subjects, parse_args, run_each
 
 
 def freesurfer_env():
@@ -260,7 +260,7 @@ def main():
     os.environ.update(env)
 
     # Each FreeSurfer subject only needs processing once, even with several sessions.
-    for _, row in rows.drop_duplicates("fs_subject").iterrows():
+    def process(row):
         subj, fs_subj = row["subject"], row["fs_subject"]
         out = anat_dir(subj)
         record_file = out / "anatomy_source.json"
@@ -272,7 +272,7 @@ def main():
             record = json.loads(record_file.read_text())
             if record.get("anatomy") == "scaled_template":
                 print(f"Using the scaled template made earlier ({record.get('reason')}).")
-                continue
+                return
 
         try:
             subject_mri(row, fs_subj, out, env)
@@ -288,6 +288,8 @@ def main():
                       "scale": scale.tolist(), "reason": reason}
         record_file.write_text(json.dumps(record, indent=1))
 
+
+    run_each(rows.drop_duplicates("fs_subject"), "s01", process, per_session=False)
 
 if __name__ == "__main__":
     main()

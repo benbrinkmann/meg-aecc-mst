@@ -135,3 +135,87 @@ def edge_overlap(edges_a, edges_b):
     set_a = {tuple(e) for e in edges_a.tolist()}
     set_b = {tuple(e) for e in edges_b.tolist()}
     return len(set_a & set_b) / len(set_a)
+
+
+# ----------------------------------------------------------------------------
+# Per-subject error handling: a failure is recorded and the run continues
+# ----------------------------------------------------------------------------
+STAGE_ORDER = ["s01", "s02", "s03", "s04", "s05", "s06"]
+
+
+def _marker_dirs(subject, session):
+    """Folders that may hold failure markers for a subject (and session)."""
+    dirs = [config.DERIV_DIR / subject / "anat"]
+    if session:
+        dirs.append(config.DERIV_DIR / subject / session)
+    return dirs
+
+
+def earlier_failure(subject, session, stage):
+    """Return the marker file of a failure in an earlier stage, or None."""
+    idx = STAGE_ORDER.index(stage)
+    for d in _marker_dirs(subject, session):
+        for marker in sorted(d.glob("FAILED_*.txt")) if d.is_dir() else []:
+            failed_stage = marker.stem[len("FAILED_"):]
+            if failed_stage in STAGE_ORDER and STAGE_ORDER.index(failed_stage) < idx:
+                return marker
+    return None
+
+
+def run_each(rows, stage, process, per_session=True):
+    """
+    Call process(row) for every row of the subject table. If it raises an
+    exception, write derivatives/<subject>/<session or anat>/FAILED_<stage>.txt
+    with the error, add a line to derivatives/failures.log, and go on to the next
+    row. Rows whose subject or session failed in an earlier stage are skipped.
+    A successful run removes this stage's old failure marker.
+    """
+    import datetime
+    import traceback
+
+    failed, skipped = [], []
+    for _, row in rows.iterrows():
+        subj = row["subject"]
+        ses = row["session"] if per_session else None
+        label = f"{subj} / {ses}" if ses else subj
+        marker_dir = config.DERIV_DIR / subj / (ses if ses else "anat")
+        marker = marker_dir / f"FAILED_{stage}.txt"
+
+        blocker = earlier_failure(subj, ses, stage)
+        if blocker is not None:
+            print(f"\n=== {label}: skipped (failed earlier, see {blocker}) ===")
+            skipped.append(label)
+            continue
+        try:
+            process(row)
+        except Exception as err:
+            text = traceback.format_exc()
+            marker_dir.mkdir(parents=True, exist_ok=True)
+            marker.write_text(text)
+            stamp = datetime.datetime.now().isoformat(timespec="seconds")
+            config.DERIV_DIR.mkdir(parents=True, exist_ok=True)
+            with open(config.DERIV_DIR / "failures.log", "a") as log:
+                log.write(f"{stamp}\t{stage}\t{label}\t{type(err).__name__}: {err}\n")
+            print(f"\nERROR in {stage} for {label}: {type(err).__name__}: {err}")
+            print(f"Details in {marker}; continuing with the next subject.")
+            failed.append(label)
+        else:
+            if marker.exists():
+                marker.unlink()   # an earlier failure of this stage is now fixed
+
+    if failed or skipped:
+        print(f"\n{stage}: {len(failed)} failed {failed}, "
+              f"{len(skipped)} skipped because of earlier failures")
+    return failed
+
+
+def print_failure_summary():
+    """List every subject and session that currently has a failure marker."""
+    markers = sorted(config.DERIV_DIR.glob("*/*/FAILED_*.txt"))
+    if not markers:
+        print("No failures.")
+        return
+    print(f"{len(markers)} failure(s); details in each file:")
+    for m in markers:
+        lines = m.read_text().strip().splitlines()
+        print(f"  {m.relative_to(config.DERIV_DIR)}: {lines[-1] if lines else ''}")

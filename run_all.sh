@@ -24,3 +24,7 @@ if [ "$#" -eq 0 ]; then
     echo "##### s07_group_reference #####"
     "${PYTHON}" s07_group_reference.py
 fi
+
+# Subjects or sessions that failed at any stage (they were skipped, not fatal).
+echo "##### Failure summary #####"
+"${PYTHON}" -c "import common; common.print_failure_summary()"

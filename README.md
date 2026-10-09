@@ -79,6 +79,15 @@ Each script accepts `--subject` and `--session` to limit what it processes.
 - The MRI wrapper's own transform is saved for reference but not used, because
   its MRI coordinate frame is MEGIN's, not FreeSurfer's.
 
+## Failures
+
+If a stage fails for one subject or session (for example an unreadable MEG
+file), the error is saved to `derivatives/<subject>/<session or anat>/FAILED_<stage>.txt`
+and a line is added to `derivatives/failures.log`; the run then continues with
+the next subject. Later stages skip that subject or session, the group stage
+leaves it out, and `run_all.sh` ends with a list of current failures. After
+fixing the cause, rerun; a stage that succeeds removes its own failure file.
+
 ## License
 
 BSD 3-Clause; see `LICENSE`.

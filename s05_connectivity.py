@@ -16,7 +16,7 @@ import numpy as np
 from mne_connectivity import envelope_correlation
 
 import config
-from common import load_subjects, parse_args, require, session_dir
+from common import load_subjects, parse_args, require, session_dir, run_each
 
 
 def fft_bandpass(x, sfreq, lo, hi):
@@ -46,7 +46,7 @@ def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
 
-    for _, row in rows.iterrows():
+    def process(row):
         subj, ses = row["subject"], row["session"]
         print(f"\n=== {subj} / {ses} ===")
         out = session_dir(subj, ses)
@@ -108,6 +108,8 @@ def main():
                  bands=list(config.BANDS), names=ts["names"], sfreq_ds=sfreq_ds,
                  rescaled=config.AECC_RESCALE)
 
+
+    run_each(rows, "s05", process)
 
 if __name__ == "__main__":
     main()

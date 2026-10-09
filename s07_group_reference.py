@@ -20,7 +20,8 @@ import pandas as pd
 from scipy.stats import false_discovery_control, wilcoxon
 
 import config
-from common import edge_overlap, load_subjects, mst_edges, require, session_dir
+from common import (earlier_failure, edge_overlap, load_subjects, mst_edges, require,
+                    session_dir)
 
 
 def load_aecc(subj, ses):
@@ -49,6 +50,15 @@ def main():
     sim_rows = []
     for ses, ses_rows in subjects.groupby("session"):
         print(f"\n=== Session {ses} ===")
+        # Leave out sessions that failed or have no connectivity results.
+        usable = [(session_dir(r["subject"], ses) / "aecc.npz").exists()
+                  and earlier_failure(r["subject"], ses, "s06") is None
+                  and not (session_dir(r["subject"], ses) / "FAILED_s06.txt").exists()
+                  for _, r in ses_rows.iterrows()]
+        excluded = ses_rows.loc[[not u for u in usable], "subject"].tolist()
+        if excluded:
+            print(f"Excluded (no aecc.npz, see failures.log): {excluded}")
+        ses_rows = ses_rows[usable]
 
         # --- Reference MSTs.
         ref_trees, bands = {}, None

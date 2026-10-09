@@ -22,7 +22,7 @@ import numpy as np
 from nilearn import datasets
 
 import config
-from common import anat_dir, load_subjects, parse_args, require, session_dir
+from common import anat_dir, load_subjects, parse_args, require, session_dir, run_each
 
 
 def aal_rois():
@@ -80,7 +80,7 @@ def main():
     args = parse_args(__doc__.splitlines()[1])
     rows = load_subjects(args.subject, args.session)
 
-    for _, row in rows.iterrows():
+    def process(row):
         subj, ses, fs_subj = row["subject"], row["session"], row["fs_subject"]
         print(f"\n=== {subj} / {ses} ===")
         anat, out = anat_dir(subj), session_dir(subj, ses)
@@ -121,6 +121,8 @@ def main():
         (out / "sphere.json").write_text(json.dumps(
             {"centre_head_m": centre.tolist(), "radius_m": radius}, indent=1))
 
+
+    run_each(rows, "s03", process)
 
 if __name__ == "__main__":
     main()
