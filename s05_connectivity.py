@@ -62,9 +62,13 @@ def main():
         data = data[:, ::config.DOWNSAMPLE_FACTOR]
 
         # --- Cut epochs.
-        n_ep = int(round(config.EPOCH_DUR_S * sfreq_ds))
-        if n_ep * config.N_EPOCHS > data.shape[1]:
-            raise ValueError(f"Need {n_ep * config.N_EPOCHS} samples for "
+        # Rounding during segment extraction and downsampling can leave the data a
+        # few samples short of N_EPOCHS full epochs; if so, shorten each epoch to
+        # fit (a fraction of a sample per epoch). Stop only if clearly too short.
+        n_target = int(round(config.EPOCH_DUR_S * sfreq_ds))
+        n_ep = min(n_target, data.shape[1] // config.N_EPOCHS)
+        if n_ep < n_target - 2:
+            raise ValueError(f"Need {n_target * config.N_EPOCHS} samples for "
                              f"{config.N_EPOCHS} epochs, have {data.shape[1]}.")
 
         def to_epochs(x):
