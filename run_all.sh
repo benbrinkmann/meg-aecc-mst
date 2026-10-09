@@ -25,6 +25,10 @@ if [ "$#" -eq 0 ]; then
     "${PYTHON}" s07_group_reference.py
 fi
 
+# Hub analysis: per session hub measures, then group contrasts on all subjects.
+echo "##### s08_hubs #####"
+"${PYTHON}" s08_hubs.py "$@"
+
 # Subjects or sessions that failed at any stage (they were skipped, not fatal).
 echo "##### Failure summary #####"
 "${PYTHON}" -c "import common; common.print_failure_summary()"

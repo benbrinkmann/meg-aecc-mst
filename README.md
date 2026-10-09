@@ -43,6 +43,24 @@ Each script accepts `--subject` and `--session` to limit what it processes.
 | s06_mst.py | per epoch MSTs, leaf fraction, diameter, tree hierarchy, BC | `mst_metrics.csv`, `mst_bc.csv` |
 | s07_group_reference.py | reference MSTs, network similarity, Wilcoxon + FDR | `group/*.csv` |
 
+## Hub analysis (stage 08)
+
+`s08_hubs.py` groups the 90 AAL regions into 32 hemisphere-specific hubs
+(`hubs.py`: mesial temporal, temporal pole, lateral temporal, basal temporal,
+orbitofrontal, dorsolateral frontal, inferior frontal, medial frontal,
+pericentral, insula, superior, inferior and medial parietal, occipital,
+thalamus, basal ganglia; each left and right). For each session and band it
+computes hub strength (mean AECc to all regions outside the hub), within-hub
+AECc, mean MST betweenness centrality and degree of the hub's regions, and the
+hub's betweenness centrality in an MST built on the hub-to-hub AECc matrix.
+It then compares the target group with each reference group and the reference
+groups with each other (Mann-Whitney U, Cliff's delta, FDR across hubs within
+each band and measure) and gives each target subject's z-score against each
+reference group. Group labels come from `TARGET_GROUP` and `REFERENCE_GROUPS`
+in `config.py`. Results: `derivatives/group/hubs/<session>/` (`contrasts.csv`,
+`zscores.csv`, `hub_metrics_all.csv`, `group_hub_matrices.npz`, and heatmaps
+`contrast_<measure>.png`). Edit `hubs.py` to change the grouping.
+
 ## Departures from the paper and open choices
 
 - **xSSS** is not available; the input data are already tSSS-processed.

@@ -140,7 +140,7 @@ def edge_overlap(edges_a, edges_b):
 # ----------------------------------------------------------------------------
 # Per-subject error handling: a failure is recorded and the run continues
 # ----------------------------------------------------------------------------
-STAGE_ORDER = ["s01", "s02", "s03", "s04", "s05", "s06"]
+STAGE_ORDER = ["s01", "s02", "s03", "s04", "s05", "s06", "s08"]
 
 
 def _marker_dirs(subject, session):
