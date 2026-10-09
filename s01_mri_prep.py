@@ -127,7 +127,19 @@ def main():
             print(f"Found {len(dicoms)} DICOM slices; running recon-all.")
             # recon-all reads the whole series given one slice from it.
             cmd = ["recon-all", "-s", fs_subj, "-i", dicoms[0]] + config.RECON_ALL_FLAGS
-            subprocess.run(cmd, env=env, check=True)
+            result = subprocess.run(cmd, env=env)
+            if result.returncode != 0:
+                # FreeSurfer 8 can fail in a later step of -autorecon1 (e.g. CC
+                # segmentation) after T1.mgz and brainmask.mgz are written. Those
+                # two files are all this pipeline uses, so continue if they exist.
+                log = config.SUBJECTS_DIR / fs_subj / "scripts" / "recon-all.log"
+                if (fs_mri / "T1.mgz").exists() and (fs_mri / "brainmask.mgz").exists():
+                    print(f"WARNING: recon-all exited with errors (see {log}), but "
+                          f"T1.mgz and brainmask.mgz were created; continuing. "
+                          f"Check brainmask.mgz in freeview.")
+                else:
+                    raise RuntimeError(f"recon-all failed before creating T1.mgz and "
+                                       f"brainmask.mgz; see {log}")
 
         # 3. Scalp surfaces (uses FreeSurfer's mkheadsurf).
         head_surf = config.SUBJECTS_DIR / fs_subj / "bem" / f"{fs_subj}-head-dense.fif"
