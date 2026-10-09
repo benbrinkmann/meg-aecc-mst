@@ -37,6 +37,22 @@ HUB_REGIONS = {
 }
 
 
+# Names shown in figure titles for each group label in subjects.csv. Labels
+# not listed here are shown as they are. The target group entry follows
+# TARGET_GROUP in config.py, whatever its label.
+import config as _config
+GROUP_DISPLAY_NAMES = {
+    _config.TARGET_GROUP: "GAD65 autoimmune epilepsy",
+    "N": "Normal controls",
+    "TLE": "Temporal lobe epilepsy",
+}
+
+
+def display_name(group):
+    """Figure label for a group label from subjects.csv."""
+    return GROUP_DISPLAY_NAMES.get(group, group)
+
+
 def split_hemisphere(roi_name):
     """'Hippocampus_L' -> ('Hippocampus', 'L'). Raises ValueError if no _L/_R suffix."""
     for side in ("L", "R"):

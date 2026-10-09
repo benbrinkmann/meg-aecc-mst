@@ -35,7 +35,7 @@ from scipy.stats import false_discovery_control, mannwhitneyu
 import config
 from common import (earlier_failure, load_subjects, mst_edges, parse_args, require,
                     run_each, session_dir)
-from hubs import assign_hubs
+from hubs import assign_hubs, display_name
 
 MEASURES = ["strength", "within", "roi_bc", "roi_degree", "hub_bc"]
 FIGURE_MEASURES = ["hub_bc", "roi_bc", "strength"]
@@ -215,12 +215,12 @@ def plot_contrasts(con, zs, measure, hub_names, bands, target, refs, fname):
             ax.text(j, i, "*", ha="center", va="center", fontsize=11, color="#222222")
         ax.set_xticks(range(len(bands)), bands, rotation=45, ha="right")
         ax.set_yticks(range(len(hub_names)), hub_names)
-        ax.set_title(f"{target} vs {ref}\n({label})", fontsize=9)
+        ax.set_title(f"{display_name(target)}\nvs {display_name(ref)}\n({label})", fontsize=9)
         ax.tick_params(length=0)
         for spine in ax.spines.values():
             spine.set_visible(False)
     cbar = fig.colorbar(image, ax=axes[0].tolist(), shrink=0.6, pad=0.02)
-    cbar.set_label(f"{measure}: higher in {target}  →", fontsize=8)
+    cbar.set_label(f"{measure}: higher in {display_name(target)}  →", fontsize=8)
     cbar.outline.set_visible(False)
     fig.savefig(fname, dpi=200, bbox_inches="tight")
     plt.close(fig)
