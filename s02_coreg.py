@@ -28,9 +28,12 @@ def main():
         print(f"\n=== {subj} / {ses} ===")
         info = mne.io.read_info(row["raw_fif"])
 
+        # on_defects="warn": the decimated scalp surfaces made by stage 01 can have
+        # small topological defects, which do not matter for fitting head shape
+        # points to the scalp.
         coreg = Coregistration(info, subject=fs_subj,
                                subjects_dir=config.SUBJECTS_DIR,
-                               fiducials="estimated")
+                               fiducials="estimated", on_defects="warn")
         coreg.fit_fiducials(verbose=False)
         coreg.fit_icp(n_iterations=20, nasion_weight=2.0, verbose=False)
         coreg.omit_head_shape_points(distance=5.0 / 1000)   # metres
