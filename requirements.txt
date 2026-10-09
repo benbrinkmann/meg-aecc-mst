@@ -3,7 +3,7 @@ mne-connectivity>=0.7
 nilearn>=0.10
 nibabel
 dipy
-vtk        # surface decimation in make_scalp_surfaces and coregistration
+pyvista    # brings vtk; surface decimation in make_scalp_surfaces and coregistration
 networkx
 numpy
 scipy>=1.11
