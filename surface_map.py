@@ -425,28 +425,71 @@ def _default_subjects_dir():
 # CLI
 # ════════════════════════════════════════════════════════════════════════════
 
-def _read_value_table(path, row=None, id_col=None):
+def _parse_rows(spec, n):
     """
-    Read a CSV/TSV table of z-scores. Returns {column: value} for one row.
+    Parse a --rows spec into a list of 0-based row indices.
 
-    By default uses the first data row. If the file has multiple subject rows,
-    pass --row <int> (0-based) or --id <value> with --id-col <name>.
+    Accepts:
+      '0-5'         -> [0,1,2,3,4,5]   (inclusive range)
+      '6-11'        -> [6,7,8,9,10,11]
+      '0,2,4'       -> [0,2,4]
+      '3'           -> [3]
+    Indices must be within [0, n).
+    """
+    idx = []
+    for part in str(spec).split(","):
+        part = part.strip()
+        if "-" in part:
+            a, b = part.split("-", 1)
+            a, b = int(a), int(b)
+            idx.extend(range(a, b + 1))
+        elif part:
+            idx.append(int(part))
+    bad = [i for i in idx if i < 0 or i >= n]
+    if bad:
+        sys.exit(f"ERROR: row index/indices out of range (table has {n} "
+                 f"rows, 0-{n-1}): {bad}")
+    return idx
+
+
+def _read_value_table(path, row=None, rows=None, id_col=None):
+    """
+    Read a CSV/TSV table of z-scores. Returns {column: value} for one row, or
+    the per-column mean across a set of rows when `rows` is given.
+
+    Selection (first that applies):
+      rows   : average the given rows (e.g. '0-5' for a group mean)
+      row    : a single 0-based row index
+      id_col : rows indexed by an identifier column (used with --id)
+      else   : the first data row
+    Only numeric columns are averaged; non-numeric columns (e.g. a label
+    column) are dropped from a group mean.
     """
     import pandas as pd
     sep = "\t" if path.lower().endswith((".tsv", ".txt")) else ","
     df = pd.read_csv(path, sep=sep)
+
     if id_col is not None:
         if id_col not in df.columns:
             sys.exit(f"ERROR: id column '{id_col}' not in table.")
         df = df.set_index(id_col)
+
+    if rows is not None:
+        idx = _parse_rows(rows, len(df))
+        subset = df.iloc[idx]
+        numeric = subset.apply(pd.to_numeric, errors="coerce")
+        series = numeric.mean(axis=0, skipna=True)
+        print(f"  averaging {len(idx)} row(s): {idx}")
+        return series.to_dict()
+
     if row is not None:
         series = df.iloc[int(row)]
     elif id_col is not None:
         sys.exit("ERROR: --id-col given but no --id value to select a row.")
     else:
         if len(df) > 1:
-            print(f"  (table has {len(df)} rows; using row 0 — use --row to "
-                  f"choose another)")
+            print(f"  (table has {len(df)} rows; using row 0 — use --row or "
+                  f"--rows to choose)")
         series = df.iloc[0]
     return series.to_dict()
 
@@ -464,6 +507,9 @@ def main(argv=None):
                          "(e.g. thickness, grayvol).")
     ap.add_argument("--row", default=None,
                     help="0-based row index to map (default: first row).")
+    ap.add_argument("--rows", default=None,
+                    help="Average a set of rows before mapping, e.g. '0-5' for "
+                         "a group mean, or '0,2,4'. Numeric columns only.")
     ap.add_argument("--id-col", default=None,
                     help="Name of an identifier column to index rows by.")
     ap.add_argument("--id", dest="id_val", default=None,
@@ -486,7 +532,8 @@ def main(argv=None):
                     help="Also write interactive HTML views.")
     args = ap.parse_args(argv)
 
-    values = _read_value_table(args.table, row=args.row, id_col=args.id_col)
+    values = _read_value_table(args.table, row=args.row, rows=args.rows,
+                               id_col=args.id_col)
 
     if args.id_val is not None and args.id_col is not None:
         # Re-read indexed and select by id
