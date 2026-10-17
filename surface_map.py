@@ -582,6 +582,9 @@ def main(argv=None):
     ap.add_argument("--parc", default="aparc",
                     help="Parcellation: aparc (DK) or aparc.a2009s.")
     ap.add_argument("--cmap", default="RdBu_r", help="Matplotlib colormap.")
+    ap.add_argument("--zrange", type=float, default=None, metavar="N",
+                    help="Symmetric color range: sets the scale to -N..+N "
+                         "(e.g. --zrange 3). Overrides --vmin/--vmax.")
     ap.add_argument("--vmin", type=float, default=-2.0,
                     help="Color range minimum (default -2).")
     ap.add_argument("--vmax", type=float, default=2.0,
@@ -604,6 +607,12 @@ def main(argv=None):
     ap.add_argument("--html", action="store_true",
                     help="Also write interactive HTML views.")
     args = ap.parse_args(argv)
+
+    # --zrange N is shorthand for a symmetric scale -N..+N
+    if args.zrange is not None:
+        if args.zrange <= 0:
+            sys.exit("ERROR: --zrange must be a positive number.")
+        args.vmin, args.vmax = -abs(args.zrange), abs(args.zrange)
 
     values = _read_value_table(args.table, row=args.row, rows=args.rows,
                                id_col=args.id_col)
