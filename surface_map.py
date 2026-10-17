@@ -242,24 +242,28 @@ def build_surface_data(region_values, subjects_dir=None, parc="aparc",
 # ════════════════════════════════════════════════════════════════════════════
 
 def render_png(data, out_path, subjects_dir, title=None,
-               cmap="RdBu_r", vmin=None, vmax=None, symmetric=True,
-               threshold=None, colorbar_label="value",
-               surf="inflated", bg="sulc"):
+               cmap="RdBu_r", vmin=-5.0, vmax=5.0, symmetric=True,
+               threshold=None, colorbar_label="z-score",
+               surf="pial", bg="sulc", bg_color="black"):
     """
-    Render a 2x2 panel (lateral + medial, both hemispheres) to a PNG using
-    nilearn (matplotlib backend, headless-safe).
+    Render a panel of cortical surface views to a PNG using nilearn
+    (matplotlib backend, headless-safe).
+
+    Panels: LH lateral, RH lateral, LH medial, RH medial, and a superior
+    (dorsal) view with BOTH hemispheres drawn together.
 
     data : dict 'lh'/'rh' -> per-vertex array (NaN where unmapped)
-    symmetric : if True and vmin/vmax not given, use a symmetric range about 0
-        (appropriate for z-scores / signed metrics).
+    surf : cortical surface to render on ('pial', 'white', 'inflated', ...).
+    bg_color : figure/axes background color ('black' by default).
+    vmin/vmax : color range; default fixed -5..+5 for z-scores. Pass None with
+        symmetric=True to auto-scale symmetrically about 0.
     threshold : values with abs < threshold are left transparent.
     """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from nilearn import plotting, surface
+    from nilearn import plotting
 
-    # fsaverage geometry files from the FreeSurfer subject (surf/<hemi>.<surf>)
     fs = os.path.join(subjects_dir, "fsaverage", "surf")
     meshes = {
         "lh": os.path.join(fs, f"lh.{surf}"),
@@ -270,7 +274,7 @@ def render_png(data, out_path, subjects_dir, title=None,
         "rh": os.path.join(fs, f"rh.{bg}"),
     }
 
-    # Determine color limits
+    # Determine color limits (default to the fixed range in the signature)
     allvals = np.concatenate([data["lh"], data["rh"]])
     finite = allvals[np.isfinite(allvals)]
     if finite.size == 0:
@@ -282,46 +286,69 @@ def render_png(data, out_path, subjects_dir, title=None,
         else:
             vmin, vmax = float(finite.min()), float(finite.max())
 
-    # nilearn expects 'left'/'right' for the hemi argument
     _hemi_full = {"lh": "left", "rh": "right"}
+    txt = "white" if bg_color == "black" else "black"
 
-    views = [("lh", "lateral"), ("rh", "lateral"),
-             ("lh", "medial"),  ("rh", "medial")]
-    fig, axes = plt.subplots(2, 2, figsize=(11, 9),
-                             subplot_kw={"projection": "3d"})
-    axes = axes.ravel()
+    # Layout: 5 panels on a 2x3 grid. The 6th cell is used for the colorbar.
+    fig = plt.figure(figsize=(16, 9))
+    fig.patch.set_facecolor(bg_color)
 
-    for ax, (hemi, view) in zip(axes, views):
+    # (row, col) positions for the four single-hemisphere views
+    single = [
+        ("lh", "lateral", 1), ("rh", "lateral", 2),
+        ("lh", "medial", 4),  ("rh", "medial", 5),
+    ]
+    for hemi, view, pos in single:
+        ax = fig.add_subplot(2, 3, pos, projection="3d")
+        ax.set_facecolor(bg_color)
         plotting.plot_surf_stat_map(
             meshes[hemi], data[hemi], bg_map=bg_maps[hemi],
-            hemi=_hemi_full[hemi],
-            view=view, cmap=cmap, vmin=vmin, vmax=vmax,
-            threshold=threshold, colorbar=False, axes=ax)
-        ax.set_title(f"{hemi.upper()} {view}", fontsize=10)
+            hemi=_hemi_full[hemi], view=view, cmap=cmap,
+            vmin=vmin, vmax=vmax, threshold=threshold,
+            colorbar=False, axes=ax)
+        ax.set_title(f"{hemi.upper()} {view}", fontsize=10, color=txt)
 
-    # One shared colorbar
+    # --- Superior (dorsal) view with BOTH hemispheres in one axes ---
+    # Draw LH then RH into the same 3D axes so both show together.
+    ax = fig.add_subplot(2, 3, 3, projection="3d")
+    ax.set_facecolor(bg_color)
+    for hemi in ("lh", "rh"):
+        plotting.plot_surf_stat_map(
+            meshes[hemi], data[hemi], bg_map=bg_maps[hemi],
+            hemi=_hemi_full[hemi], view="dorsal", cmap=cmap,
+            vmin=vmin, vmax=vmax, threshold=threshold,
+            colorbar=False, axes=ax)
+    ax.set_title("Superior (both)", fontsize=10, color=txt)
+
+    # Shared colorbar in the 6th cell
+    cax = fig.add_subplot(2, 3, 6)
+    cax.axis("off")
     sm = plt.cm.ScalarMappable(cmap=cmap,
                                norm=plt.Normalize(vmin=vmin, vmax=vmax))
     sm.set_array([])
-    cbar = fig.colorbar(sm, ax=axes, fraction=0.025, pad=0.04,
-                        shrink=0.6)
-    cbar.set_label(colorbar_label)
+    cbar = fig.colorbar(sm, ax=cax, fraction=0.5, pad=0.04, shrink=0.8)
+    cbar.set_label(colorbar_label, color=txt)
+    cbar.ax.yaxis.set_tick_params(color=txt)
+    plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color=txt)
 
     if title:
-        fig.suptitle(title, fontsize=13)
+        fig.suptitle(title, fontsize=13, color=txt)
 
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=bg_color)
     plt.close(fig)
     return out_path
 
 
 def render_html(data, out_path, subjects_dir, title=None,
-                cmap="RdBu_r", vmin=None, vmax=None, symmetric=True,
-                threshold=None, surf="inflated", bg="sulc"):
+                cmap="RdBu_r", vmin=-5.0, vmax=5.0, symmetric=True,
+                threshold=None, surf="pial", bg="sulc", **_):
     """
     Render an interactive rotatable view (one HTML per hemisphere, lateral
     start) using nilearn.plotting.view_surf. Writes <out_path>_lh.html and
     <out_path>_rh.html and returns the two paths.
+
+    Extra keyword arguments (e.g. bg_color, colorbar_label) are accepted and
+    ignored so the same kw set can be shared with render_png.
     """
     from nilearn import plotting
 
@@ -519,8 +546,14 @@ def main(argv=None):
     ap.add_argument("--parc", default="aparc",
                     help="Parcellation: aparc (DK) or aparc.a2009s.")
     ap.add_argument("--cmap", default="RdBu_r", help="Matplotlib colormap.")
-    ap.add_argument("--vmin", type=float, default=None)
-    ap.add_argument("--vmax", type=float, default=None)
+    ap.add_argument("--vmin", type=float, default=-5.0,
+                    help="Color range minimum (default -5).")
+    ap.add_argument("--vmax", type=float, default=5.0,
+                    help="Color range maximum (default +5).")
+    ap.add_argument("--surf", default="pial",
+                    help="Cortical surface: pial (default), white, inflated.")
+    ap.add_argument("--bg-color", default="black",
+                    help="Figure background color (default black).")
     ap.add_argument("--threshold", type=float, default=None,
                     help="Hide |value| below this.")
     ap.add_argument("--no-symmetric", action="store_true",
@@ -548,7 +581,8 @@ def main(argv=None):
             subjects_dir=args.subjects_dir, parc=args.parc, html=args.html,
             cmap=args.cmap, vmin=args.vmin, vmax=args.vmax,
             symmetric=not args.no_symmetric, threshold=args.threshold,
-            colorbar_label=args.label, title=args.title)
+            colorbar_label=args.label, title=args.title,
+            surf=args.surf, bg_color=args.bg_color)
     except ValueError as e:
         sys.exit(f"ERROR: {e}")
 
