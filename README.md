@@ -61,6 +61,22 @@ in `config.py`. Results: `derivatives/group/hubs/<session>/` (`contrasts.csv`,
 `zscores.csv`, `hub_metrics_all.csv`, `group_hub_matrices.npz`, and heatmaps
 `contrast_<measure>.png`). Edit `hubs.py` to change the grouping.
 
+### Hub maps on the cortex
+
+`hub_surface_map.py` paints the stage 08 z-scores on the fsaverage pial
+surface, one figure per band and reference group (mean z of the target
+subjects; strength by default, `--measure` for the others):
+
+    python3 hub_surface_map.py derivatives/group/hubs/ses01/zscores.csv \
+        --subjects-dir ~/mne_data/MNE-fsaverage-data
+
+Figures go to `surface_maps/` next to the CSV. Each cortical vertex takes the
+AAL region beneath it from `resources/aal90_fsaverage5.npz` (built once by
+`tools/build_aal_fsaverage_labels.py`), so no atlas download is needed; only
+the fsaverage subject. Thalamus and basal ganglia hubs have no cortical
+surface and are not shown. AAL is defined in MNI152 space and fsaverage in
+MNI305, so region borders on the surface are approximate (a few mm).
+
 ## Departures from the paper and open choices
 
 - **xSSS** is not available; the input data are already tSSS-processed.
