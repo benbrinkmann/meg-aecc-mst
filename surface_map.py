@@ -242,22 +242,25 @@ def build_surface_data(region_values, subjects_dir=None, parc="aparc",
 # ════════════════════════════════════════════════════════════════════════════
 
 def render_png(data, out_path, subjects_dir, title=None,
-               cmap="RdBu_r", vmin=-3.0, vmax=3.0, symmetric=True,
+               cmap="RdBu_r", vmin=-2.0, vmax=2.0, symmetric=True,
                threshold=None, colorbar_label="z-score",
-               surf="pial", bg="sulc", bg_color="black"):
+               surf="pial", bg="sulc", bg_color="black",
+               color_opacity=0.4):
     """
     Render a panel of cortical surface views to a PNG using nilearn
     (matplotlib backend, headless-safe).
 
     Panels: LH lateral, RH lateral, LH medial, RH medial. Colors are blended
-    with the sulcal shading (bg_on_data) so cortical folding stays visible.
+    with the sulcal shading so cortical folding stays visible.
 
     data : dict 'lh'/'rh' -> per-vertex array (NaN where unmapped)
     surf : cortical surface to render on ('pial', 'white', 'inflated', ...).
     bg_color : figure/axes background color ('black' by default).
-    vmin/vmax : color range; default fixed -3..+3 for z-scores. Pass None with
+    vmin/vmax : color range; default fixed -2..+2 for z-scores. Pass None with
         symmetric=True to auto-scale symmetrically about 0.
     threshold : values with abs < threshold are left transparent.
+    color_opacity : opacity of the z-score color over the gyral shading,
+        in (0, 1]. Lower shows more gyral pattern. 0.4 gives 60% shading.
     """
     import matplotlib
     matplotlib.use("Agg")
@@ -298,19 +301,41 @@ def render_png(data, out_path, subjects_dir, title=None,
         ("lh", "lateral", 1), ("rh", "lateral", 2),
         ("lh", "medial", 3),  ("rh", "medial", 4),
     ]
+
+    # Blending of z-score color with the sulcal (gyral) shading.
+    # With bg_on_data=True, nilearn composites each colored face at a fixed
+    # opacity of 0.7, so the shading contributes only 30%. nilearn does not
+    # expose that value, so we wrap its color-mixing step for the duration of
+    # this render and substitute `color_opacity` for every colored face
+    # (faces below threshold keep opacity 0 and show only the shading).
+    # Shading weight = 1 - color_opacity: 0.4 -> 60% shading (2x the default).
+    import nilearn.plotting.surface._matplotlib_backend as _mb
+    _orig_mix = _mb.mix_colormaps
+    opacity = float(color_opacity)
+    if not 0.0 < opacity <= 1.0:
+        raise ValueError(f"color_opacity must be in (0, 1]; got {opacity}")
+
+    def _mix_with_opacity(fg, bg_rgba):
+        fg = fg.copy()
+        colored = fg[:, 3] > 0          # faces carrying a z-score color
+        fg[colored, 3] = opacity
+        return _orig_mix(fg, bg_rgba)
+
     axes = []
-    for hemi, view, pos in views:
-        ax = fig.add_subplot(2, 2, pos, projection="3d")
-        ax.set_facecolor(bg_color)
-        # bg_on_data=True multiplies the z-score colors by the sulcal shading,
-        # so the cortical folding stays visible beneath the color map.
-        plotting.plot_surf_stat_map(
-            meshes[hemi], data[hemi], bg_map=bg_maps[hemi],
-            hemi=_hemi_full[hemi], view=view, cmap=cmap,
-            vmin=vmin, vmax=vmax, threshold=threshold,
-            bg_on_data=True, colorbar=False, axes=ax)
-        ax.set_title(f"{hemi.upper()} {view}", fontsize=10, color=txt)
-        axes.append(ax)
+    _mb.mix_colormaps = _mix_with_opacity
+    try:
+        for hemi, view, pos in views:
+            ax = fig.add_subplot(2, 2, pos, projection="3d")
+            ax.set_facecolor(bg_color)
+            plotting.plot_surf_stat_map(
+                meshes[hemi], data[hemi], bg_map=bg_maps[hemi],
+                hemi=_hemi_full[hemi], view=view, cmap=cmap,
+                vmin=vmin, vmax=vmax, threshold=threshold,
+                bg_on_data=True, colorbar=False, axes=ax)
+            ax.set_title(f"{hemi.upper()} {view}", fontsize=10, color=txt)
+            axes.append(ax)
+    finally:
+        _mb.mix_colormaps = _orig_mix   # always restore nilearn's function
 
     # Shared colorbar to the right of the panels
     sm = plt.cm.ScalarMappable(cmap=cmap,
@@ -330,7 +355,7 @@ def render_png(data, out_path, subjects_dir, title=None,
 
 
 def render_html(data, out_path, subjects_dir, title=None,
-                cmap="RdBu_r", vmin=-3.0, vmax=3.0, symmetric=True,
+                cmap="RdBu_r", vmin=-2.0, vmax=2.0, symmetric=True,
                 threshold=None, surf="pial", bg="sulc", **_):
     """
     Render an interactive rotatable view (one HTML per hemisphere, lateral
@@ -536,12 +561,15 @@ def main(argv=None):
     ap.add_argument("--parc", default="aparc",
                     help="Parcellation: aparc (DK) or aparc.a2009s.")
     ap.add_argument("--cmap", default="RdBu_r", help="Matplotlib colormap.")
-    ap.add_argument("--vmin", type=float, default=-3.0,
-                    help="Color range minimum (default -3).")
-    ap.add_argument("--vmax", type=float, default=3.0,
-                    help="Color range maximum (default +3).")
+    ap.add_argument("--vmin", type=float, default=-2.0,
+                    help="Color range minimum (default -2).")
+    ap.add_argument("--vmax", type=float, default=2.0,
+                    help="Color range maximum (default +2).")
     ap.add_argument("--surf", default="pial",
                     help="Cortical surface: pial (default), white, inflated.")
+    ap.add_argument("--color-opacity", type=float, default=0.4,
+                    help="Opacity of the z-score color over the gyral shading "
+                         "(0-1). Lower shows more gyral pattern (default 0.4).")
     ap.add_argument("--bg-color", default="black",
                     help="Figure background color (default black).")
     ap.add_argument("--threshold", type=float, default=None,
@@ -572,7 +600,8 @@ def main(argv=None):
             cmap=args.cmap, vmin=args.vmin, vmax=args.vmax,
             symmetric=not args.no_symmetric, threshold=args.threshold,
             colorbar_label=args.label, title=args.title,
-            surf=args.surf, bg_color=args.bg_color)
+            surf=args.surf, bg_color=args.bg_color,
+            color_opacity=args.color_opacity)
     except ValueError as e:
         sys.exit(f"ERROR: {e}")
 
