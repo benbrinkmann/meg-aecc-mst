@@ -242,20 +242,20 @@ def build_surface_data(region_values, subjects_dir=None, parc="aparc",
 # ════════════════════════════════════════════════════════════════════════════
 
 def render_png(data, out_path, subjects_dir, title=None,
-               cmap="RdBu_r", vmin=-5.0, vmax=5.0, symmetric=True,
+               cmap="RdBu_r", vmin=-3.0, vmax=3.0, symmetric=True,
                threshold=None, colorbar_label="z-score",
                surf="pial", bg="sulc", bg_color="black"):
     """
     Render a panel of cortical surface views to a PNG using nilearn
     (matplotlib backend, headless-safe).
 
-    Panels: LH lateral, RH lateral, LH medial, RH medial, and a superior
-    (dorsal) view with BOTH hemispheres drawn together.
+    Panels: LH lateral, RH lateral, LH medial, RH medial. Colors are blended
+    with the sulcal shading (bg_on_data) so cortical folding stays visible.
 
     data : dict 'lh'/'rh' -> per-vertex array (NaN where unmapped)
     surf : cortical surface to render on ('pial', 'white', 'inflated', ...).
     bg_color : figure/axes background color ('black' by default).
-    vmin/vmax : color range; default fixed -5..+5 for z-scores. Pass None with
+    vmin/vmax : color range; default fixed -3..+3 for z-scores. Pass None with
         symmetric=True to auto-scale symmetrically about 0.
     threshold : values with abs < threshold are left transparent.
     """
@@ -289,44 +289,34 @@ def render_png(data, out_path, subjects_dir, title=None,
     _hemi_full = {"lh": "left", "rh": "right"}
     txt = "white" if bg_color == "black" else "black"
 
-    # Layout: 5 panels on a 2x3 grid. The 6th cell is used for the colorbar.
-    fig = plt.figure(figsize=(16, 9))
+    # Layout: 2x2 grid (LH/RH lateral on top, LH/RH medial below) with a
+    # shared colorbar on the right.
+    fig = plt.figure(figsize=(12, 9))
     fig.patch.set_facecolor(bg_color)
 
-    # (row, col) positions for the four single-hemisphere views
-    single = [
+    views = [
         ("lh", "lateral", 1), ("rh", "lateral", 2),
-        ("lh", "medial", 4),  ("rh", "medial", 5),
+        ("lh", "medial", 3),  ("rh", "medial", 4),
     ]
-    for hemi, view, pos in single:
-        ax = fig.add_subplot(2, 3, pos, projection="3d")
+    axes = []
+    for hemi, view, pos in views:
+        ax = fig.add_subplot(2, 2, pos, projection="3d")
         ax.set_facecolor(bg_color)
+        # bg_on_data=True multiplies the z-score colors by the sulcal shading,
+        # so the cortical folding stays visible beneath the color map.
         plotting.plot_surf_stat_map(
             meshes[hemi], data[hemi], bg_map=bg_maps[hemi],
             hemi=_hemi_full[hemi], view=view, cmap=cmap,
             vmin=vmin, vmax=vmax, threshold=threshold,
-            colorbar=False, axes=ax)
+            bg_on_data=True, colorbar=False, axes=ax)
         ax.set_title(f"{hemi.upper()} {view}", fontsize=10, color=txt)
+        axes.append(ax)
 
-    # --- Superior (dorsal) view with BOTH hemispheres in one axes ---
-    # Draw LH then RH into the same 3D axes so both show together.
-    ax = fig.add_subplot(2, 3, 3, projection="3d")
-    ax.set_facecolor(bg_color)
-    for hemi in ("lh", "rh"):
-        plotting.plot_surf_stat_map(
-            meshes[hemi], data[hemi], bg_map=bg_maps[hemi],
-            hemi=_hemi_full[hemi], view="dorsal", cmap=cmap,
-            vmin=vmin, vmax=vmax, threshold=threshold,
-            colorbar=False, axes=ax)
-    ax.set_title("Superior (both)", fontsize=10, color=txt)
-
-    # Shared colorbar in the 6th cell
-    cax = fig.add_subplot(2, 3, 6)
-    cax.axis("off")
+    # Shared colorbar to the right of the panels
     sm = plt.cm.ScalarMappable(cmap=cmap,
                                norm=plt.Normalize(vmin=vmin, vmax=vmax))
     sm.set_array([])
-    cbar = fig.colorbar(sm, ax=cax, fraction=0.5, pad=0.04, shrink=0.8)
+    cbar = fig.colorbar(sm, ax=axes, fraction=0.025, pad=0.04, shrink=0.6)
     cbar.set_label(colorbar_label, color=txt)
     cbar.ax.yaxis.set_tick_params(color=txt)
     plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color=txt)
@@ -340,7 +330,7 @@ def render_png(data, out_path, subjects_dir, title=None,
 
 
 def render_html(data, out_path, subjects_dir, title=None,
-                cmap="RdBu_r", vmin=-5.0, vmax=5.0, symmetric=True,
+                cmap="RdBu_r", vmin=-3.0, vmax=3.0, symmetric=True,
                 threshold=None, surf="pial", bg="sulc", **_):
     """
     Render an interactive rotatable view (one HTML per hemisphere, lateral
@@ -546,10 +536,10 @@ def main(argv=None):
     ap.add_argument("--parc", default="aparc",
                     help="Parcellation: aparc (DK) or aparc.a2009s.")
     ap.add_argument("--cmap", default="RdBu_r", help="Matplotlib colormap.")
-    ap.add_argument("--vmin", type=float, default=-5.0,
-                    help="Color range minimum (default -5).")
-    ap.add_argument("--vmax", type=float, default=5.0,
-                    help="Color range maximum (default +5).")
+    ap.add_argument("--vmin", type=float, default=-3.0,
+                    help="Color range minimum (default -3).")
+    ap.add_argument("--vmax", type=float, default=3.0,
+                    help="Color range maximum (default +3).")
     ap.add_argument("--surf", default="pial",
                     help="Cortical surface: pial (default), white, inflated.")
     ap.add_argument("--bg-color", default="black",
