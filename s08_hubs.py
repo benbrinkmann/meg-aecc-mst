@@ -20,12 +20,15 @@ Group level, for each session label: the target group is compared with each
 reference group, and the reference groups with each other (Mann-Whitney U,
 Cliff's delta, Benjamini-Hochberg FDR across hubs within each band and
 measure). Each target subject is also expressed as a z-score relative to each
-reference group, which is usable even when the target group is small.
+reference group, which is usable even when the target group is small, and
+every subject as a z-score against the whole cohort (all groups pooled; see
+cohort_zscores.py).
 
 Outputs:
   derivatives/<subject>/<session>/hub_metrics.csv, hub_matrix.npz
   derivatives/group/hubs/<session>/hub_metrics_all.csv, contrasts.csv,
-      zscores.csv, group_hub_matrices.npz, contrast_<measure>.png
+      zscores.csv, zscores_cohort.csv, group_hub_matrices.npz,
+      contrast_<measure>.png
 """
 import networkx as nx
 import numpy as np
@@ -36,6 +39,7 @@ import config
 from common import (earlier_failure, load_subjects, mst_edges, parse_args, require,
                     run_each, session_dir)
 from hubs import assign_hubs, display_name
+from cohort_zscores import zscores_cohort
 
 MEASURES = ["strength", "within", "roi_bc", "roi_degree", "hub_bc"]
 FIGURE_MEASURES = ["hub_bc", "roi_bc", "strength"]
@@ -280,6 +284,8 @@ def main():
         zs = zscores(df, target, refs)
         con.to_csv(gdir / "contrasts.csv", index=False)
         zs.to_csv(gdir / "zscores.csv", index=False)
+        # Every subject z-scored against the whole cohort (all groups pooled).
+        zscores_cohort(df).to_csv(gdir / "zscores_cohort.csv", index=False)
         if len(con):
             sig = con[con["p_fdr"] < 0.05]
             print(f"{len(con)} tests, {len(sig)} with FDR-corrected p < 0.05")

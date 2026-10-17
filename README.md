@@ -63,19 +63,30 @@ in `config.py`. Results: `derivatives/group/hubs/<session>/` (`contrasts.csv`,
 
 ### Hub maps on the cortex
 
-`hub_surface_map.py` paints the stage 08 z-scores on the fsaverage pial
-surface, one figure per band and reference group (mean z of the target
-subjects; strength by default, `--measure` for the others):
+Stage 08 also writes `zscores_cohort.csv`: every subject z-scored against the
+whole cohort of the session (all groups pooled), per band, measure and hub.
+To make it from an existing `hub_metrics_all.csv` without rerunning stage 08:
 
-    python3 hub_surface_map.py derivatives/group/hubs/ses01/zscores.csv \
+    python3 cohort_zscores.py derivatives/group/hubs/ses01/hub_metrics_all.csv
+
+`hub_surface_map.py` paints these z-scores on the fsaverage pial surface. Each
+figure has four rows (LH lateral, RH lateral, LH medial, RH medial) and one
+column per band. From `zscores.csv` it makes one figure per reference group
+(mean z of the target subjects); from `zscores_cohort.csv`, one per group
+(mean z of that group's subjects against the cohort). Strength by default,
+`--measure` for the other measures, `--zrange` for the color scale:
+
+    python3 hub_surface_map.py derivatives/group/hubs/ses01/zscores_cohort.csv \
         --subjects-dir ~/mne_data/MNE-fsaverage-data
 
 Figures go to `surface_maps/` next to the CSV. Each cortical vertex takes the
 AAL region beneath it from `resources/aal90_fsaverage5.npz` (built once by
 `tools/build_aal_fsaverage_labels.py`), so no atlas download is needed; only
-the fsaverage subject. Thalamus and basal ganglia hubs have no cortical
-surface and are not shown. AAL is defined in MNI152 space and fsaverage in
-MNI305, so region borders on the surface are approximate (a few mm).
+the fsaverage subject. Panels are drawn on fsaverage6, derived exactly from
+the full fsaverage (`--full-res` for the full mesh, which needs several GB of
+memory per figure). Thalamus and basal ganglia hubs have no cortical surface
+and are not shown. AAL is defined in MNI152 space and fsaverage in MNI305, so
+region borders on the surface are approximate (a few mm).
 
 ## Departures from the paper and open choices
 
