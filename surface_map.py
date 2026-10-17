@@ -245,7 +245,7 @@ def render_png(data, out_path, subjects_dir, title=None,
                cmap="RdBu_r", vmin=-2.0, vmax=2.0, symmetric=True,
                threshold=None, colorbar_label="z-score",
                surf="pial", bg="sulc", bg_color="black",
-               color_opacity=0.4):
+               shading=0.75):
     """
     Render a panel of cortical surface views to a PNG using nilearn
     (matplotlib backend, headless-safe).
@@ -259,8 +259,9 @@ def render_png(data, out_path, subjects_dir, title=None,
     vmin/vmax : color range; default fixed -2..+2 for z-scores. Pass None with
         symmetric=True to auto-scale symmetrically about 0.
     threshold : values with abs < threshold are left transparent.
-    color_opacity : opacity of the z-score color over the gyral shading,
-        in (0, 1]. Lower shows more gyral pattern. 0.4 gives 60% shading.
+    shading : how strongly sulci darken the colors, in [0, 1). 0 = flat
+        color; 0.75 (default) darkens sulcal fundi to 25% brightness while
+        gyral crowns keep full color. Higher shows more gyral pattern.
     """
     import matplotlib
     matplotlib.use("Agg")
@@ -302,27 +303,47 @@ def render_png(data, out_path, subjects_dir, title=None,
         ("lh", "medial", 3),  ("rh", "medial", 4),
     ]
 
-    # Blending of z-score color with the sulcal (gyral) shading.
-    # With bg_on_data=True, nilearn composites each colored face at a fixed
-    # opacity of 0.7, so the shading contributes only 30%. nilearn does not
-    # expose that value, so we wrap its color-mixing step for the duration of
-    # this render and substitute `color_opacity` for every colored face
-    # (faces below threshold keep opacity 0 and show only the shading).
-    # Shading weight = 1 - color_opacity: 0.4 -> 60% shading (2x the default).
+    # Combine the z-score color with the sulcal (gyral) shading.
+    #
+    # Transparency blending (nilearn's default with bg_on_data) mixes each
+    # color with grey, which washes the colors out. Instead we shade
+    # multiplicatively, like lighting: each colored face keeps its full
+    # colormap color and is only darkened according to the sulcal depth.
+    #     shade = (1 - shading) + shading * gyral_brightness   (in [1-shading, 1])
+    #     face  = colormap_color * shade
+    # Gyral crowns stay at full color; sulcal fundi are darkened by `shading`.
+    # Faces with no value (alpha 0) show the plain grey sulcal background.
+    #
+    # nilearn does not expose this step, so its color-mixing function is
+    # wrapped for the duration of this render and restored afterwards.
     import nilearn.plotting.surface._matplotlib_backend as _mb
     _orig_mix = _mb.mix_colormaps
-    opacity = float(color_opacity)
-    if not 0.0 < opacity <= 1.0:
-        raise ValueError(f"color_opacity must be in (0, 1]; got {opacity}")
+    depth = float(shading)
+    if not 0.0 <= depth < 1.0:
+        raise ValueError(f"shading must be in [0, 1); got {depth}")
 
-    def _mix_with_opacity(fg, bg_rgba):
-        fg = fg.copy()
-        colored = fg[:, 3] > 0          # faces carrying a z-score color
-        fg[colored, 3] = opacity
-        return _orig_mix(fg, bg_rgba)
+    def _mix_shaded(fg, bg_rgba):
+        out = _orig_mix(fg, bg_rgba)         # handles uncolored faces
+        colored = fg[:, 3] > 0                # faces carrying a z-score color
+        if not np.any(colored):
+            return out
+        # Background is nilearn's Greys map of the sulcal values; its
+        # luminance is high on gyri and low in sulci. Most faces sit in a
+        # narrow middle band, so stretch between the 20th and 80th
+        # percentiles (clipping beyond) to separate gyri from sulci clearly.
+        lum = bg_rgba[:, :3].mean(axis=1)
+        lo, hi = np.percentile(lum, [20, 80])
+        if hi > lo:
+            bright = np.clip((lum - lo) / (hi - lo), 0.0, 1.0)
+        else:
+            bright = np.ones_like(lum)
+        shade = (1.0 - depth) + depth * bright
+        out[colored, :3] = fg[colored, :3] * shade[colored, None]
+        out[colored, 3] = 1.0
+        return out
 
     axes = []
-    _mb.mix_colormaps = _mix_with_opacity
+    _mb.mix_colormaps = _mix_shaded
     try:
         for hemi, view, pos in views:
             ax = fig.add_subplot(2, 2, pos, projection="3d")
@@ -567,9 +588,10 @@ def main(argv=None):
                     help="Color range maximum (default +2).")
     ap.add_argument("--surf", default="pial",
                     help="Cortical surface: pial (default), white, inflated.")
-    ap.add_argument("--color-opacity", type=float, default=0.4,
-                    help="Opacity of the z-score color over the gyral shading "
-                         "(0-1). Lower shows more gyral pattern (default 0.4).")
+    ap.add_argument("--shading", type=float, default=0.75,
+                    help="How strongly sulci darken the colors, 0-1 "
+                         "(default 0.75). Higher shows more gyral pattern; "
+                         "colors stay fully saturated on the gyri.")
     ap.add_argument("--bg-color", default="black",
                     help="Figure background color (default black).")
     ap.add_argument("--threshold", type=float, default=None,
@@ -601,7 +623,7 @@ def main(argv=None):
             symmetric=not args.no_symmetric, threshold=args.threshold,
             colorbar_label=args.label, title=args.title,
             surf=args.surf, bg_color=args.bg_color,
-            color_opacity=args.color_opacity)
+            shading=args.shading)
     except ValueError as e:
         sys.exit(f"ERROR: {e}")
 
