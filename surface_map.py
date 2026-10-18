@@ -406,11 +406,29 @@ def _add_colorbar(fig, axes, cmap, vmin, vmax, label, txt, **kw):
     return cbar
 
 
+def _save_figure(fig, out_path, bg_color, dpi=150, jpg=True, jpg_dpi=300):
+    """
+    Save the figure as PNG at `dpi` and, if `jpg`, also as a high quality
+    JPEG next to it (same name, .jpg) at `jpg_dpi`: quality 98, no chroma
+    subsampling (4:4:4, keeps colored region edges crisp), optimized coding.
+    Returns the JPEG path, or None.
+    """
+    fig.savefig(out_path, dpi=dpi, bbox_inches="tight", facecolor=bg_color)
+    if not jpg:
+        return None
+    jpg_path = os.path.splitext(out_path)[0] + ".jpg"
+    fig.savefig(jpg_path, format="jpg", dpi=jpg_dpi, bbox_inches="tight",
+                facecolor=bg_color,
+                pil_kwargs={"quality": 98, "subsampling": 0, "optimize": True})
+    return jpg_path
+
+
 def render_png(data, out_path, subjects_dir, title=None,
                cmap="RdBu_r", vmin=-2.0, vmax=2.0, symmetric=True,
                threshold=None, colorbar_label="z-score",
                surf="pial", bg="sulc", bg_color="black",
-               shading=0.75):
+               shading=0.75,
+               dpi=150, jpg=True, jpg_dpi=300):
     """
     Render a panel of cortical surface views to a PNG using nilearn
     (matplotlib backend, headless-safe).
@@ -427,6 +445,9 @@ def render_png(data, out_path, subjects_dir, title=None,
     shading : how strongly sulci darken the colors, in [0, 1). 0 = flat
         color; 0.75 (default) darkens sulcal fundi to 25% brightness while
         gyral crowns keep full color. Higher shows more gyral pattern.
+
+    dpi / jpg / jpg_dpi : PNG resolution; also write a high quality JPEG
+        (same name, .jpg) at jpg_dpi (default 300).
     """
     import matplotlib
     matplotlib.use("Agg")
@@ -456,7 +477,7 @@ def render_png(data, out_path, subjects_dir, title=None,
     if title:
         fig.suptitle(title, fontsize=13, color=txt)
 
-    fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=bg_color)
+    _save_figure(fig, out_path, bg_color, dpi, jpg, jpg_dpi)
     plt.close(fig)
     return out_path
 
@@ -465,7 +486,8 @@ def render_grid(columns, column_labels, out_path, subjects_dir, title=None,
                 cmap="RdBu_r", vmin=-2.0, vmax=2.0, symmetric=True,
                 threshold=None, colorbar_label="z-score",
                 surf="pial", bg="sulc", bg_color="black", shading=0.75,
-                coarsen=1):
+                coarsen=1,
+                dpi=150, jpg=True, jpg_dpi=300):
     """
     Render several data sets side by side: one column per data set (e.g. one
     per frequency band) and four rows, LH lateral, RH lateral, LH medial,
@@ -522,7 +544,7 @@ def render_grid(columns, column_labels, out_path, subjects_dir, title=None,
     if title:
         fig.suptitle(title, fontsize=13, color=txt)
 
-    fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor=bg_color)
+    _save_figure(fig, out_path, bg_color, dpi, jpg, jpg_dpi)
     plt.close(fig)
     return out_path
 
@@ -756,6 +778,10 @@ def main(argv=None):
     ap.add_argument("--label", default="z-score",
                     help="Colorbar label.")
     ap.add_argument("--title", default=None)
+    ap.add_argument("--no-jpg", action="store_true",
+                    help="Do not write the high quality JPEG next to the PNG.")
+    ap.add_argument("--jpg-dpi", type=int, default=300,
+                    help="JPEG resolution in dpi (default 300).")
     ap.add_argument("--html", action="store_true",
                     help="Also write interactive HTML views.")
     args = ap.parse_args(argv)
@@ -784,7 +810,8 @@ def main(argv=None):
             symmetric=not args.no_symmetric, threshold=args.threshold,
             colorbar_label=args.label, title=args.title,
             surf=args.surf, bg_color=args.bg_color,
-            shading=args.shading)
+            shading=args.shading,
+            jpg=not args.no_jpg, jpg_dpi=args.jpg_dpi)
     except ValueError as e:
         sys.exit(f"ERROR: {e}")
 
@@ -799,6 +826,8 @@ def main(argv=None):
     if res.get("skipped_other"):
         print(f"  Skipped {len(res['skipped_other'])} unrecognized column(s).")
     print(f"  PNG: {res['png']}")
+    if not args.no_jpg:
+        print(f"  JPG: {os.path.splitext(res['png'])[0]}.jpg")
     if res.get("html"):
         for h in res["html"]:
             print(f"  HTML: {h}")

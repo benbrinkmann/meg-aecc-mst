@@ -200,6 +200,10 @@ def main(argv=None):
     ap.add_argument("--shading", type=float, default=0.75,
                     help="How strongly sulci darken the colors, 0-1 (default 0.75).")
     ap.add_argument("--bg-color", default="black")
+    ap.add_argument("--no-jpg", action="store_true",
+                    help="Do not write the high quality JPEG next to the PNG.")
+    ap.add_argument("--jpg-dpi", type=int, default=300,
+                    help="JPEG resolution in dpi (default 300).")
     ap.add_argument("--full-res", action="store_true",
                     help="Draw panels on the full fsaverage mesh (slow, several "
                          "GB of memory per figure). Default: fsaverage6.")
@@ -291,8 +295,9 @@ def main(argv=None):
             vmin=-args.zrange, vmax=args.zrange,
             colorbar_label=f"z-score ({args.measure})",
             surf=args.surf, shading=args.shading, bg_color=args.bg_color,
-            coarsen=0 if args.full_res else 1)
-        print(f"  wrote {out}")
+            coarsen=0 if args.full_res else 1,
+            jpg=not args.no_jpg, jpg_dpi=args.jpg_dpi)
+        print(f"  wrote {out}" + ("" if args.no_jpg else f" and {out.with_suffix('.jpg').name}"))
     print(f"Done: measure {args.measure}, bands {', '.join(bands)}.")
     return 0
 

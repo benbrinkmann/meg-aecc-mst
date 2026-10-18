@@ -79,7 +79,9 @@ column per band. From `zscores.csv` it makes one figure per reference group
     python3 hub_surface_map.py derivatives/group/hubs/ses01/zscores_cohort.csv \
         --subjects-dir ~/mne_data/MNE-fsaverage-data
 
-Figures go to `surface_maps/` next to the CSV. Each cortical vertex takes the
+Figures go to `surface_maps/` next to the CSV, each as a PNG (150 dpi) and a
+high quality JPEG (300 dpi, quality 98, no chroma subsampling; `--jpg-dpi` to
+change the resolution, `--no-jpg` to skip it). Each cortical vertex takes the
 AAL region beneath it from `resources/aal90_fsaverage5.npz` (built once by
 `tools/build_aal_fsaverage_labels.py`), so no atlas download is needed; only
 the fsaverage subject. Panels are drawn on fsaverage6, derived exactly from
