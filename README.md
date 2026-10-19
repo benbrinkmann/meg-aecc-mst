@@ -69,6 +69,10 @@ To make it from an existing `hub_metrics_all.csv` without rerunning stage 08:
 
     python3 cohort_zscores.py derivatives/group/hubs/ses01/hub_metrics_all.csv
 
+To score every subject against one group instead (for example the normal
+controls), add `--baseline <group label>`; this writes
+`zscores_vs_<group label>.csv`, which `hub_surface_map.py` reads the same way.
+
 `hub_surface_map.py` paints these z-scores on the fsaverage pial surface. Each
 figure has four rows (LH lateral, RH lateral, LH medial, RH medial) and one
 column per band. From `zscores.csv` it makes one figure per reference group

@@ -22,6 +22,8 @@ Two inputs are accepted:
   zscores_cohort.csv  every subject scored against the whole cohort (all
                       groups pooled; cohort_zscores.py). One figure per
                       group: the mean z of that group's subjects.
+  zscores_vs_<group>.csv  the same, but scored against one group only, such
+                      as the normal controls (cohort_zscores.py --baseline).
 
 Usage
     python3 hub_surface_map.py derivatives/group/hubs/ses01/zscores.csv \\
@@ -39,6 +41,7 @@ Usage
 Output (default folder: surface_maps/ next to the CSV):
     <measure>_<target>_vs_<reference>.png    from zscores.csv
     <measure>_<group>_vs_cohort.png          from zscores_cohort.csv
+    <measure>_<group>_vs_<baseline>.png      from zscores_vs_<baseline>.csv
 
 Requires the full fsaverage subject (surf/?h.pial, ?h.sulc, ?h.sphere and
 label/?h.aparc.annot) in --subjects-dir. No atlas download is needed.
@@ -287,9 +290,14 @@ def main(argv=None):
             out = outdir / f"{args.measure}_{target}_vs_{key}.png"
         else:
             name = display_name(key, sel["subject"].unique())
+            # Comparison group: whole cohort, or one group (cohort_zscores.py --baseline)
+            baseline = (str(sel["baseline"].iloc[0]) if "baseline" in sel.columns
+                        else "cohort")
+            versus = ("whole cohort" if baseline == "cohort" else display_name(
+                baseline, zs.loc[zs["group"] == baseline, "subject"].unique()))
             title = (f"{args.measure}: mean z of {n_subj} {name} subject(s) "
-                     f"vs whole cohort")
-            out = outdir / f"{args.measure}_{key}_vs_cohort.png"
+                     f"vs {versus}")
+            out = outdir / f"{args.measure}_{key}_vs_{baseline}.png"
         surface_map.render_grid(
             columns, labels, str(out), subjects_dir, title=title,
             vmin=-args.zrange, vmax=args.zrange,
